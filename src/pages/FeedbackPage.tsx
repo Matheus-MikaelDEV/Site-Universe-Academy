@@ -10,7 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
-import { useAuth } from "@/contexts/Auth/AuthContext"; // Corrected import path
+import { useAuth } from "@/contexts/AuthContext"; // Corrected import path
 import React, { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 
