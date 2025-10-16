@@ -1,4 +1,4 @@
-import { Menu, BookOpen, LayoutDashboard } from "lucide-react";
+import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
@@ -6,6 +6,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { showSuccess } from "@/utils/toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export const Header = () => {
   const { user, session } = useAuth();
@@ -23,6 +25,10 @@ export const Header = () => {
     { href: "/idealizadores", label: "Idealizadores" },
     { href: "/feedback", label: "Feedback" },
   ];
+
+  const getInitials = (email: string) => {
+    return email?.[0]?.toUpperCase() || "U";
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -78,16 +84,39 @@ export const Header = () => {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {session ? (
-              <>
-                <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Painel
-                </Button>
-                <Button variant="ghost" onClick={handleLogout}>
-                  Sair
-                </Button>
-              </>
+            {session && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.user_metadata.avatar_url} alt={user.user_metadata.full_name || user.email} />
+                      <AvatarFallback>{getInitials(user.email!)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.user_metadata.full_name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Painel</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/perfil")}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Meu Perfil</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sair</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <>
                 <Button variant="ghost" onClick={() => navigate("/login")}>
