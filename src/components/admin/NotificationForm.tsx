@@ -37,7 +37,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       message: "",
-      userId: "",
+      userId: "all-users", // Default to "all-users" instead of empty string
       type: "info",
     },
   });
@@ -61,7 +61,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       const notificationData = {
         message: values.message,
-        user_id: values.userId || null,
+        user_id: values.userId === "all-users" ? null : values.userId, // Check for "all-users"
         type: values.type,
       };
 
@@ -107,7 +107,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Todos os Usuários</SelectItem>
+                  <SelectItem value="all-users">Todos os Usuários</SelectItem> {/* Changed value from "" to "all-users" */}
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name || user.id}
