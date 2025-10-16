@@ -45,7 +45,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
   useEffect(() => {
     if (profile) {
       form.setValue("fullName", profile.full_name || "");
-      // @ts-ignore
       form.setValue("cpf", profile.cpf || "");
       setAvatarPreview(profile.avatar_url || null);
     }
