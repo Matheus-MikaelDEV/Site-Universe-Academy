@@ -33,6 +33,7 @@ const CoursesPage = () => {
         console.log("Tentando buscar cursos...");
         const { data: coursesData, error: coursesError } = await supabase.from("courses").select("id, title, category, instructor, image_url").order("title", { ascending: true });
         
+        console.log("Supabase courses response - data:", coursesData, "error:", coursesError); // NOVO LOG
         if (coursesError) {
           console.error("Erro ao buscar cursos do Supabase:", coursesError);
           showError("Falha ao carregar cursos: " + coursesError.message);
@@ -48,6 +49,7 @@ const CoursesPage = () => {
           .select("category")
           .not("category", "is", null);
         
+        console.log("Supabase categories response - data:", categoriesData, "error:", categoriesError); // NOVO LOG
         if (categoriesError) {
           console.error("Erro ao buscar categorias do Supabase:", categoriesError);
         } else {
