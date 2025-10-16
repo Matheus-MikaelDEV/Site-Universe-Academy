@@ -7,9 +7,10 @@ import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserBadges } from "@/components/UserBadges";
-import { Award, FileText } from "lucide-react";
+import { Award, FileText, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { showError } from "@/utils/toast";
+import { CourseCard } from "@/components/course-card"; // Import CourseCard
 
 interface Certificate {
   id: string;
@@ -21,11 +22,27 @@ interface Certificate {
   };
 }
 
+interface EnrolledCourse {
+  id: string;
+  start_date: string;
+  completion_date: string | null;
+  status: string;
+  courses: {
+    id: string;
+    title: string;
+    image_url: string | null;
+    instructor: string | null;
+    category: string | null;
+  };
+}
+
 const DashboardPage = () => {
   const { user, profile, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
+  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
+  const [enrolledCoursesLoading, setEnrolledCoursesLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && isAdmin) {
@@ -64,8 +81,44 @@ const DashboardPage = () => {
       setCertificatesLoading(false);
     };
 
+    const fetchEnrolledCourses = async () => {
+      if (!user) {
+        setEnrolledCoursesLoading(false);
+        return;
+      }
+      setEnrolledCoursesLoading(true);
+      const { data, error } = await supabase
+        .from("course_enrollments")
+        .select(
+          `
+          id,
+          start_date,
+          completion_date,
+          status,
+          courses (
+            id,
+            title,
+            image_url,
+            instructor,
+            category
+          )
+        `
+        )
+        .eq("user_id", user.id)
+        .order("start_date", { ascending: false });
+
+      if (error) {
+        showError("Erro ao carregar cursos inscritos: " + error.message);
+        console.error("Error fetching enrolled courses:", error);
+      } else {
+        setEnrolledCourses(data || []);
+      }
+      setEnrolledCoursesLoading(false);
+    };
+
     if (!loading && user) {
       fetchCertificates();
+      fetchEnrolledCourses();
     }
   }, [user, loading]);
 
@@ -124,6 +177,53 @@ const DashboardPage = () => {
         </Card>
 
         <UserBadges />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Meus Cursos
+            </CardTitle>
+            <CardDescription>
+              Continue de onde parou ou explore novos cursos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {enrolledCoursesLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-3">
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : enrolledCourses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {enrolledCourses.map((enrollment) => (
+                  <CourseCard
+                    key={enrollment.id}
+                    id={enrollment.courses.id}
+                    title={enrollment.courses.title}
+                    category={enrollment.courses.category || "Geral"}
+                    instructor={enrollment.courses.instructor || "N/A"}
+                    imageUrl={enrollment.courses.image_url || "/placeholder.svg"}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Você ainda não se inscreveu em nenhum curso.</p>
+                <Link to="/cursos">
+                  <Button variant="outline" className="mt-4">Explorar Cursos</Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
