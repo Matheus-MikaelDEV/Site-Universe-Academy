@@ -16,6 +16,8 @@ import { showError, showSuccess } from "@/utils/toast";
 import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
+  fullName: z.string().min(3, { message: "O nome completo é obrigatório." }),
+  cpf: z.string().optional(),
   email: z.string().email({ message: "Por favor, insira um email válido." }),
   password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
 });
@@ -25,6 +27,8 @@ export function RegisterForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      fullName: "",
+      cpf: "",
       email: "",
       password: "",
     },
@@ -34,6 +38,12 @@ export function RegisterForm() {
     const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
+      options: {
+        data: {
+          full_name: values.fullName,
+          cpf: values.cpf,
+        },
+      },
     });
 
     if (error) {
@@ -47,6 +57,32 @@ export function RegisterForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="fullName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome Completo</FormLabel>
+              <FormControl>
+                <Input placeholder="Seu nome completo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="cpf"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>CPF (Opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="000.000.000-00" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="email"
