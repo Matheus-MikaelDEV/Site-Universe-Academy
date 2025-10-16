@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserBadges } from "@/components/UserBadges"; // Import UserBadges
 
 const DashboardPage = () => {
   const { user, profile, isAdmin, loading } = useAuth();
@@ -53,6 +54,8 @@ const DashboardPage = () => {
             Bem-vindo de volta, {profile?.full_name || user?.email}!
           </p>
         </div>
+
+        <UserBadges /> {/* Add UserBadges component here */}
 
         <Card>
           <CardHeader>

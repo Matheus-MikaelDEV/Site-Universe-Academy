@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { showSuccess } from "@/utils/toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { NotificationBell } from "./NotificationBell"; // Import NotificationBell
 
 export const Header = () => {
   const { user, session, isAdmin, profile } = useAuth();
@@ -85,44 +86,47 @@ export const Header = () => {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {session && user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || user.email} />
-                      <AvatarFallback>{profile?.full_name?.[0] || getInitials(user.email!)}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{profile?.full_name || user.email}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Painel</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/perfil")}>
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Meu Perfil</span>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
+              <>
+                <NotificationBell /> {/* Add NotificationBell here */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || user.email} />
+                        <AvatarFallback>{profile?.full_name?.[0] || getInitials(user.email!)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{profile?.full_name || user.email}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Painel</span>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sair</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem onClick={() => navigate("/perfil")}>
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Meu Perfil</span>
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sair</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button variant="ghost" onClick={() => navigate("/login")}>

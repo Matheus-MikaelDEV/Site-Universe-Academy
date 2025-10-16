@@ -6,6 +6,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+import { showError } from "@/utils/toast";
 
 interface Stats {
   users: number;
@@ -20,27 +31,40 @@ interface Feedback {
   created_at: string;
 }
 
+interface MonthlySignupData {
+  month: string;
+  count: number;
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentFeedbacks, setRecentFeedbacks] = useState<Feedback[]>([]);
+  const [monthlySignups, setMonthlySignups] = useState<MonthlySignupData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const { count: userCount } = await supabase
+        const { count: userCount, error: userCountError } = await supabase
           .from("profiles")
           .select("*", { count: "exact", head: true });
+        if (userCountError) throw userCountError;
 
-        const { count: courseCount } = await supabase
+        const { count: courseCount, error: courseCountError } = await supabase
           .from("courses")
           .select("*", { count: "exact", head: true });
+        if (courseCountError) throw courseCountError;
 
-        const { data: feedbackData, count: feedbackCount } = await supabase
+        const { data: feedbackData, count: feedbackCount, error: feedbackError } = await supabase
           .from("feedbacks")
           .select("*", { count: "exact" })
           .order("created_at", { ascending: false })
           .limit(5);
+        if (feedbackError) throw feedbackError;
+
+        const { data: signupsData, error: signupsError } = await supabase
+          .rpc('get_monthly_signups');
+        if (signupsError) throw signupsError;
 
         setStats({
           users: userCount ?? 0,
@@ -49,8 +73,10 @@ export default function AdminDashboardPage() {
         });
         
         setRecentFeedbacks(feedbackData as Feedback[] || []);
+        setMonthlySignups(signupsData as MonthlySignupData[] || []);
 
-      } catch (error) {
+      } catch (error: any) {
+        showError("Erro ao carregar dados do painel: " + error.message);
         console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
@@ -89,6 +115,45 @@ export default function AdminDashboardPage() {
           {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.feedbacks}</div>}
         </CardContent>
       </Card>
+
+      <Card className="md:col-span-2 lg:col-span-3">
+        <CardHeader>
+          <CardTitle>Novos Usuários por Mês</CardTitle>
+          <CardDescription>Visão geral dos registros de usuários ao longo do tempo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlySignups} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
+                  <XAxis dataKey="month" stroke="hsl(var(--foreground))" />
+                  <YAxis stroke="hsl(var(--foreground))" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background))",
+                      borderColor: "hsl(var(--border))",
+                      borderRadius: "var(--radius)",
+                    }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="hsl(var(--primary))"
+                    activeDot={{ r: 8 }}
+                    name="Usuários Registrados"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="md:col-span-2 lg:col-span-3">
         <CardHeader>
           <CardTitle>Feedbacks Recentes</CardTitle>
