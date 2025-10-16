@@ -30,9 +30,8 @@ const CoursesPage = () => {
       console.log("Iniciando busca de cursos...");
 
       try {
-        // SIMPLIFICANDO A BUSCA DE CURSOS PARA TESTE
         console.log("Tentando buscar cursos com consulta simples...");
-        const { data: coursesData, error: coursesError } = await supabase.from("courses").select("*").order("title", { ascending: true });
+        const { data: coursesData, error: coursesError } = await supabase.from("courses").select("id, title, category, instructor, image_url").order("title", { ascending: true });
         
         console.log("Supabase courses response - data:", coursesData, "error:", coursesError);
 
@@ -44,7 +43,6 @@ const CoursesPage = () => {
           setCourses(coursesData as Course[]);
         }
 
-        // BUSCA DE CATEGORIAS
         console.log("Tentando buscar categorias...");
         const { data: categoriesData, error: categoriesError } = await supabase
           .from("courses")
@@ -56,7 +54,7 @@ const CoursesPage = () => {
         if (categoriesError) {
           console.error("Erro ao buscar categorias do Supabase:", categoriesError);
         } else {
-          const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category)));
+          const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category))).filter(Boolean); // Filter out null/undefined categories
           setCategories(uniqueCategories as string[]);
         }
       } catch (e: any) {
@@ -69,7 +67,14 @@ const CoursesPage = () => {
     };
 
     fetchCoursesAndCategories();
-  }, []); // Removendo dependências para simplificar o teste inicial
+  }, []);
+
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || course.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -115,9 +120,9 @@ const CoursesPage = () => {
               </div>
             ))}
           </div>
-        ) : courses.length > 0 ? (
+        ) : filteredCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => (
+            {filteredCourses.map((course) => (
               <CourseCard
                 key={course.id}
                 id={course.id}
