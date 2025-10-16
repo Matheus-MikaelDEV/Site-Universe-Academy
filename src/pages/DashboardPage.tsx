@@ -4,126 +4,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserBadges } from "@/components/UserBadges";
 import { Award, FileText, BookOpen } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
-import { showError } from "@/utils/toast";
-import { CourseCard } from "@/components/course-card";
-import { Button } from "@/components/ui/button"; // Importação adicionada
-
-interface Certificate {
-  id: string;
-  created_at: string;
-  course_enrollments: {
-    courses: {
-      title: string;
-    };
-  };
-}
-
-interface EnrolledCourse {
-  id: string;
-  start_date: string;
-  completion_date: string | null;
-  status: string;
-  courses: {
-    id: string;
-    title: string;
-    image_url: string | null;
-    instructor: string | null;
-    category: string | null;
-  };
-}
+import { Button } from "@/components/ui/button";
+import { useUserCertificates } from "@/hooks/use-user-certificates";
+import { useEnrolledCourses } from "@/hooks/use-enrolled-courses";
 
 const DashboardPage = () => {
-  const { user, profile, isAdmin, loading } = useAuth();
+  const { user, profile, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [certificatesLoading, setCertificatesLoading] = useState(true);
-  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
-  const [enrolledCoursesLoading, setEnrolledCoursesLoading] = useState(true);
+
+  const { data: certificates, isLoading: certificatesLoading } = useUserCertificates();
+  const { data: enrolledCourses, isLoading: enrolledCoursesLoading } = useEnrolledCourses();
 
   useEffect(() => {
-    if (!loading && isAdmin) {
+    if (!authLoading && isAdmin) {
       navigate("/admin/dashboard", { replace: true });
     }
-  }, [isAdmin, loading, navigate]);
+  }, [isAdmin, authLoading, navigate]);
 
-  useEffect(() => {
-    const fetchCertificates = async () => {
-      if (!user) {
-        setCertificatesLoading(false);
-        return;
-      }
-      setCertificatesLoading(true);
-      const { data, error } = await supabase
-        .from("certificates")
-        .select(
-          `
-          id,
-          created_at,
-          course_enrollments (
-            courses (
-              title
-            )
-          )
-        `
-        )
-        .eq("course_enrollments.user_id", user.id); // Filter by user_id in enrollment
-
-      if (error) {
-        showError("Erro ao carregar certificados: " + error.message);
-        console.error("Error fetching certificates:", error);
-      } else {
-        setCertificates(data || []);
-      }
-      setCertificatesLoading(false);
-    };
-
-    const fetchEnrolledCourses = async () => {
-      if (!user) {
-        setEnrolledCoursesLoading(false);
-        return;
-      }
-      setEnrolledCoursesLoading(true);
-      const { data, error } = await supabase
-        .from("course_enrollments")
-        .select(
-          `
-          id,
-          start_date,
-          completion_date,
-          status,
-          courses (
-            id,
-            title,
-            image_url,
-            instructor,
-            category
-          )
-        `
-        )
-        .eq("user_id", user.id)
-        .order("start_date", { ascending: false });
-
-      if (error) {
-        showError("Erro ao carregar cursos inscritos: " + error.message);
-        console.error("Error fetching enrolled courses:", error);
-      } else {
-        setEnrolledCourses(data || []);
-      }
-      setEnrolledCoursesLoading(false);
-    };
-
-    if (!loading && user) {
-      fetchCertificates();
-      fetchEnrolledCourses();
-    }
-  }, [user, loading]);
-
-  if (loading || isAdmin) {
+  if (authLoading || isAdmin) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -202,7 +104,7 @@ const DashboardPage = () => {
                   </div>
                 ))}
               </div>
-            ) : enrolledCourses.length > 0 ? (
+            ) : enrolledCourses && enrolledCourses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {enrolledCourses.map((enrollment) => (
                   <CourseCard
@@ -239,7 +141,7 @@ const DashboardPage = () => {
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
-            ) : certificates.length > 0 ? (
+            ) : certificates && certificates.length > 0 ? (
               <div className="space-y-2">
                 {certificates.map((cert) => (
                   <div key={cert.id} className="flex items-center justify-between p-3 border rounded-md">

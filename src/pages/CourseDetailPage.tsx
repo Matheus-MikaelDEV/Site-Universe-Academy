@@ -6,125 +6,77 @@ import { Footer } from "@/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { BookCheck, CheckCircle, Link as LinkIcon, FileText, Youtube, CheckSquare, Square } from "lucide-react";
+import { BookCheck, CheckCircle, FileText, Youtube, CheckSquare, Square } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { showError, showSuccess } from "@/utils/toast";
-import { Course } from "@/types/course";
-import { Module } from "@/types/module";
-import { ModuleQuiz } from "@/components/ModuleQuiz"; // Import ModuleQuiz
-
-interface ModuleWithProgress extends Module {
-  is_completed: boolean;
-}
+import { ModuleQuiz } from "@/components/ModuleQuiz";
+import { useCourseDetails } from "@/hooks/use-course-details";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const CourseDetailPage = () => {
   const { id: courseId } = useParams();
   const { user, session } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<ModuleWithProgress[]>([]);
-  const [isEnrolled, setIsEnrolled] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [courseCompletionPercentage, setCourseCompletionPercentage] = useState(0);
+  const { data, isLoading, error } = useCourseDetails(courseId);
 
-  const fetchCourseData = async () => {
-    if (!courseId) return;
-    setLoading(true);
+  const course = data?.course;
+  const modules = data?.modules || [];
+  const isEnrolled = data?.isEnrolled || false;
+  const courseCompletionPercentage = data?.courseCompletionPercentage || 0;
 
-    // Fetch course details
-    const { data: courseData, error: courseError } = await supabase
-      .from("courses").select("*").eq("id", courseId).single();
-    
-    if (courseError) console.error("Error fetching course:", courseError);
-    else setCourse(courseData);
-
-    // Check enrollment status if user is logged in
-    if (user) {
-      const { data: enrollmentData, error: enrollmentError } = await supabase
-        .from("course_enrollments")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("course_id", courseId)
-        .single();
-      
-      if (enrollmentData) {
-        setIsEnrolled(true);
-        // Fetch modules and their completion status if enrolled
-        const { data: modulesData, error: modulesError } = await supabase
-          .from("modules")
-          .select(`
-            *,
-            course_progress(is_completed)
-          `)
-          .eq("course_id", courseId)
-          .order("module_order");
-        
-        if (modulesError) {
-          console.error("Error fetching modules:", modulesError);
-        } else {
-          const modulesWithProgress = modulesData.map(m => ({
-            ...m,
-            is_completed: m.course_progress.length > 0 ? m.course_progress[0].is_completed : false
-          }));
-          setModules(modulesWithProgress);
-
-          const completedCount = modulesWithProgress.filter(m => m.is_completed).length;
-          const totalCount = modulesWithProgress.length;
-          if (totalCount > 0) {
-            setCourseCompletionPercentage(Math.round((completedCount / totalCount) * 100));
-          } else {
-            setCourseCompletionPercentage(0);
-          }
-        }
+  const enrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!session) {
+        navigate("/login");
+        throw new Error("Usuário não autenticado.");
       }
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchCourseData();
-  }, [courseId, user]);
-
-  const handleEnroll = async () => {
-    if (!session) {
-      navigate("/login");
-      return;
-    }
-    const { error } = await supabase
-      .from("course_enrollments")
-      .insert({ user_id: user!.id, course_id: courseId! });
-
-    if (error) {
-      showError("Erro ao se inscrever no curso: " + error.message);
-    } else {
+      const { error } = await supabase
+        .from("course_enrollments")
+        .insert({ user_id: user!.id, course_id: courseId! });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       showSuccess("Inscrição realizada com sucesso!");
-      setIsEnrolled(true);
-      fetchCourseData(); // Re-fetch data to show modules
-    }
-  };
+      queryClient.invalidateQueries({ queryKey: ["courseDetails", courseId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["enrolledCourses", user?.id] });
+    },
+    onError: (err: any) => {
+      showError("Erro ao se inscrever no curso: " + err.message);
+    },
+  });
 
-  const handleMarkModuleComplete = async (moduleId: string, isCompleted: boolean) => {
-    if (!user) return;
+  const markModuleCompleteMutation = useMutation({
+    mutationFn: async ({ moduleId, isCompleted }: { moduleId: string; isCompleted: boolean }) => {
+      if (!user) throw new Error("Usuário não autenticado.");
 
-    const { data, error } = await supabase
-      .from("course_progress")
-      .upsert(
-        {
-          user_id: user.id,
-          module_id: moduleId,
-          is_completed: !isCompleted,
-          completed_at: !isCompleted ? new Date().toISOString() : null,
-        },
-        { onConflict: "user_id,module_id" }
-      );
+      const { data, error } = await supabase
+        .from("course_progress")
+        .upsert(
+          {
+            user_id: user.id,
+            module_id: moduleId,
+            is_completed: !isCompleted,
+            completed_at: !isCompleted ? new Date().toISOString() : null,
+          },
+          { onConflict: "user_id,module_id" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      showSuccess(variables.isCompleted ? "Módulo marcado como não concluído." : "Módulo marcado como concluído!");
+      queryClient.invalidateQueries({ queryKey: ["courseDetails", courseId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["userBadges", user?.id] }); // Invalidate badges as well
+      queryClient.invalidateQueries({ queryKey: ["userCertificates", user?.id] }); // Invalidate certificates
+    },
+    onError: (err: any) => {
+      showError("Erro ao atualizar progresso: " + err.message);
+    },
+  });
 
-    if (error) {
-      showError("Erro ao atualizar progresso: " + error.message);
-    } else {
-      showSuccess(!isCompleted ? "Módulo marcado como concluído!" : "Módulo marcado como não concluído.");
-      fetchCourseData(); // Re-fetch to update progress
-    }
+  const handleMarkModuleComplete = (moduleId: string, isCompleted: boolean) => {
+    markModuleCompleteMutation.mutate({ moduleId, isCompleted });
   };
 
   const handleQuizComplete = (score: number, total: number) => {
@@ -133,86 +85,125 @@ const CourseDetailPage = () => {
     // This logic can be added here or in a Supabase trigger
   };
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow container py-12">
-        {loading ? (
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow container py-12">
           <div className="space-y-4">
             <Skeleton className="h-96 w-full" />
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-6 w-1/2" />
           </div>
-        ) : course ? (
-          <>
-            <div className="grid md:grid-cols-3 gap-8 mb-12">
-              <div className="md:col-span-2">
-                <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
-                <p className="text-lg text-muted-foreground mb-4">por {course.instructor}</p>
-                <div className="prose dark:prose-invert max-w-none">
-                  <p>{course.description || "Nenhuma descrição disponível."}</p>
-                </div>
-              </div>
-              <div>
-                <img 
-                  src={course.image_url || '/placeholder.svg'} 
-                  alt={course.title} 
-                  className="rounded-lg shadow-lg mb-4 w-full object-cover" 
-                  loading="lazy"
-                />
-                {isEnrolled ? (
-                  <>
-                    <Button size="lg" className="w-full mb-2" disabled>
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      Você está inscrito
-                    </Button>
-                    <div className="text-center text-sm text-muted-foreground">
-                      Progresso do Curso: {courseCompletionPercentage}%
-                    </div>
-                  </>
-                ) : (
-                  <Button size="lg" className="w-full" onClick={handleEnroll}>
-                    <BookCheck className="mr-2 h-5 w-5" />
-                    Inscrever-se no Curso
-                  </Button>
-                )}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow container py-12">
+          <div className="text-destructive">Erro ao carregar detalhes do curso: {error.message}</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow container py-12">
+          <p>Curso não encontrado.</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-grow container py-12">
+        <>
+          <div className="grid md:grid-cols-3 gap-8 mb-12">
+            <div className="md:col-span-2">
+              <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
+              <p className="text-lg text-muted-foreground mb-4">por {course.instructor}</p>
+              <div className="prose dark:prose-invert max-w-none">
+                <p>{course.description || "Nenhuma descrição disponível."}</p>
               </div>
             </div>
-            {isEnrolled && (
-              <div>
-                <h2 className="text-3xl font-bold mb-6">Conteúdo do Curso</h2>
-                {modules.length > 0 ? (
-                  <Accordion type="single" collapsible className="w-full">
-                    {modules.map(module => (
-                      <AccordionItem value={module.id} key={module.id}>
-                        <AccordionTrigger className="text-xl flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {module.is_completed ? (
-                              <CheckSquare className="h-5 w-5 text-green-500" />
-                            ) : (
-                              <Square className="h-5 w-5 text-muted-foreground" />
-                            )}
-                            {module.title}
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4 space-y-4">
-                          <p className="text-muted-foreground">{module.description}</p>
-                          <div className="flex flex-wrap gap-4">
-                            {module.video_url && (
-                              <a href={module.video_url} target="_blank" rel="noopener noreferrer">
-                                <Button variant="outline"><Youtube className="mr-2 h-4 w-4" /> Assistir Vídeo</Button>
-                              </a>
-                            )}
-                            {module.pdf_url && (
-                              <a href={module.pdf_url} target="_blank" rel="noopener noreferrer">
-                                <Button variant="outline"><FileText className="mr-2 h-4 w-4" /> Baixar PDF</Button>
-                              </a>
-                            )}
-                            <Button
-                              variant={module.is_completed ? "secondary" : "outline"}
-                              onClick={() => handleMarkModuleComplete(module.id, module.is_completed)}
-                            >
-                              {module.is_completed ? (
+            <div>
+              <img 
+                src={course.image_url || '/placeholder.svg'} 
+                alt={course.title} 
+                className="rounded-lg shadow-lg mb-4 w-full object-cover" 
+                loading="lazy"
+              />
+              {isEnrolled ? (
+                <>
+                  <Button size="lg" className="w-full mb-2" disabled>
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Você está inscrito
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Progresso do Curso: {courseCompletionPercentage}%
+                  </div>
+                </>
+              ) : (
+                <Button size="lg" className="w-full" onClick={() => enrollMutation.mutate()} disabled={enrollMutation.isPending}>
+                  {enrollMutation.isPending ? "Inscrevendo..." : (
+                    <>
+                      <BookCheck className="mr-2 h-5 w-5" />
+                      Inscrever-se no Curso
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+          {isEnrolled && (
+            <div>
+              <h2 className="text-3xl font-bold mb-6">Conteúdo do Curso</h2>
+              {modules.length > 0 ? (
+                <Accordion type="single" collapsible className="w-full">
+                  {modules.map(module => (
+                    <AccordionItem value={module.id} key={module.id}>
+                      <AccordionTrigger className="text-xl flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {module.is_completed ? (
+                            <CheckSquare className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <Square className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          {module.title}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-4 space-y-4">
+                        <p className="text-muted-foreground">{module.description}</p>
+                        <div className="flex flex-wrap gap-4">
+                          {module.video_url && (
+                            <a href={module.video_url} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline"><Youtube className="mr-2 h-4 w-4" /> Assistir Vídeo</Button>
+                            </a>
+                          )}
+                          {module.pdf_url && (
+                            <a href={module.pdf_url} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline"><FileText className="mr-2 h-4 w-4" /> Baixar PDF</Button>
+                            </a>
+                          )}
+                          <Button
+                            variant={module.is_completed ? "secondary" : "outline"}
+                            onClick={() => handleMarkModuleComplete(module.id, module.is_completed)}
+                            disabled={markModuleCompleteMutation.isPending}
+                          >
+                            {markModuleCompleteMutation.isPending ? "Atualizando..." : (
+                              module.is_completed ? (
                                 <>
                                   <CheckCircle className="mr-2 h-4 w-4" /> Concluído
                                 </>
@@ -220,26 +211,24 @@ const CourseDetailPage = () => {
                                 <>
                                   <Square className="mr-2 h-4 w-4" /> Marcar como Concluído
                                 </>
-                              )}
-                            </Button>
-                          </div>
-                          {/* Quiz Section */}
-                          <div className="mt-6">
-                            <ModuleQuiz moduleId={module.id} onQuizComplete={handleQuizComplete} />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">O conteúdo deste curso será adicionado em breve.</p>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <p>Curso não encontrado.</p>
-        )}
+                              )
+                            )}
+                          </Button>
+                        </div>
+                        {/* Quiz Section */}
+                        <div className="mt-6">
+                          <ModuleQuiz moduleId={module.id} onQuizComplete={handleQuizComplete} />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">O conteúdo deste curso será adicionado em breve.</p>
+              )}
+            </div>
+          )}
+        </>
       </main>
       <Footer />
     </div>

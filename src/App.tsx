@@ -1,6 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner"; // Changed import to Sonner
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -24,15 +23,15 @@ const IdealizersPage = lazy(() => import("./pages/IdealizersPage"));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage")); // New
-const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage")); // New
-const CertificateViewerPage = lazy(() => import("./pages/CertificateViewerPage")); // New
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const CertificateViewerPage = lazy(() => import("./pages/CertificateViewerPage"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 const AdminCoursesPage = lazy(() => import("./pages/admin/AdminCoursesPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminFeedbackPage = lazy(() => import("./pages/admin/AdminFeedbackPage"));
 const AdminManageCourseContentPage = lazy(() => import("./pages/admin/AdminManageCourseContentPage"));
-const AdminSendNotificationPage = lazy(() => import("./pages/admin/AdminSendNotificationPage")); // New
+const AdminSendNotificationPage = lazy(() => import("./pages/admin/AdminSendNotificationPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -43,8 +42,7 @@ const App = () => (
       <TooltipProvider>
         <BrowserRouter>
           <AuthProvider>
-            <Toaster />
-            <Sonner />
+            <Toaster /> {/* This is now Sonner's Toaster */}
             <ErrorBoundary> {/* Wrap the entire app with ErrorBoundary */}
               <Suspense fallback={
                 <div className="flex flex-col min-h-screen">
@@ -65,14 +63,14 @@ const App = () => (
                   <Route path="/sobre" element={<AboutPage />} />
                   <Route path="/idealizadores" element={<IdealizersPage />} />
                   <Route path="/feedback" element={<FeedbackPage />} />
-                  <Route path="/leaderboard" element={<LeaderboardPage />} /> {/* New Public Route */}
-                  <Route path="/certificado/:certificateId" element={<CertificateViewerPage />} /> {/* New Public Route */}
+                  <Route path="/leaderboard" element={<LeaderboardPage />} />
+                  <Route path="/certificado/:certificateId" element={<CertificateViewerPage />} />
                   
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/perfil" element={<ProfilePage />} />
-                    <Route path="/notificacoes" element={<NotificationsPage />} /> {/* New Protected Route */}
+                    <Route path="/notificacoes" element={<NotificationsPage />} />
                   </Route>
 
                   {/* Admin Routes */}
@@ -83,7 +81,7 @@ const App = () => (
                       <Route path="courses/:courseId/manage" element={<AdminManageCourseContentPage />} />
                       <Route path="users" element={<AdminUsersPage />} />
                       <Route path="feedback" element={<AdminFeedbackPage />} />
-                      <Route path="send-notification" element={<AdminSendNotificationPage />} /> {/* New Admin Route */}
+                      <Route path="send-notification" element={<AdminSendNotificationPage />} />
                     </Route>
                   </Route>
 

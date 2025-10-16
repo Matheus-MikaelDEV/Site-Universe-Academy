@@ -10,8 +10,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/Auth/AuthContext"; // Corrected import path
 import React, { useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 const feedbackSchema = z.object({
   name: z.string().min(1, "O nome é obrigatório."),
@@ -39,22 +40,29 @@ const FeedbackPage = () => {
     }
   }, [user, profile, form]);
 
-  const onSubmit = async (values: z.infer<typeof feedbackSchema>) => {
-    const { error } = await supabase.from("feedbacks").insert([
-      {
-        name: values.name,
-        email: values.email,
-        message: values.message,
-        user_id: user?.id,
-      },
-    ]);
-
-    if (error) {
-      showError("Ocorreu um erro ao enviar o feedback: " + error.message);
-    } else {
+  const submitFeedbackMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof feedbackSchema>) => {
+      const { error } = await supabase.from("feedbacks").insert([
+        {
+          name: values.name,
+          email: values.email,
+          message: values.message,
+          user_id: user?.id,
+        },
+      ]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
       showSuccess("Feedback enviado com sucesso! Obrigado.");
       form.reset();
-    }
+    },
+    onError: (error: any) => {
+      showError("Ocorreu um erro ao enviar o feedback: " + error.message);
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof feedbackSchema>) => {
+    submitFeedbackMutation.mutate(values);
   };
 
   return (
@@ -87,8 +95,8 @@ const FeedbackPage = () => {
                 <Textarea id="message" placeholder="Escreva sua mensagem aqui..." {...form.register("message")} />
                 {form.formState.errors.message && <p className="text-sm text-destructive">{form.formState.errors.message.message}</p>}
               </div>
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Enviando..." : "Enviar Feedback"}
+              <Button type="submit" className="w-full" disabled={submitFeedbackMutation.isPending}>
+                {submitFeedbackMutation.isPending ? "Enviando..." : "Enviar Feedback"}
               </Button>
             </form>
           </CardContent>

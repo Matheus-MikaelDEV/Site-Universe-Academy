@@ -17,6 +17,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { Profile } from "@/contexts/AuthContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   message: z.string().min(10, "A mensagem deve ter pelo menos 10 caracteres."),
@@ -31,6 +32,7 @@ interface NotificationFormProps {
 
 export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps) {
   const [users, setUsers] = useState<Profile[]>([]);
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,26 +57,30 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
     fetchUsers();
   }, []);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const notificationData = {
-      message: values.message,
-      user_id: values.userId || null, // If userId is empty, it's a general notification (though RLS might restrict this)
-      type: values.type,
-    };
+  const sendNotificationMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const notificationData = {
+        message: values.message,
+        user_id: values.userId || null,
+        type: values.type,
+      };
 
-    const { error } = await supabase.from("notifications").insert([notificationData]);
-
-    if (error) {
-      showError("Erro ao enviar notificação: " + error.message);
-    } else {
+      const { error } = await supabase.from("notifications").insert([notificationData]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
       showSuccess("Notificação enviada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["userNotifications"] }); // Invalidate all user notifications
       onSuccess();
-    }
-  }
+    },
+    onError: (err: any) => {
+      showError("Erro ao enviar notificação: " + err.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((values) => sendNotificationMutation.mutate(values))} className="space-y-4">
         <FormField
           control={form.control}
           name="message"
@@ -137,8 +143,10 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
           )}
         />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Enviar Notificação</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={sendNotificationMutation.isPending}>Cancelar</Button>
+          <Button type="submit" disabled={sendNotificationMutation.isPending}>
+            {sendNotificationMutation.isPending ? "Enviando..." : "Enviar Notificação"}
+          </Button>
         </div>
       </form>
     </Form>

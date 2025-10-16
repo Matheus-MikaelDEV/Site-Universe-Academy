@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { Course } from "@/types/course";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   title: z.string().min(3, "O título é obrigatório."),
@@ -31,6 +32,7 @@ interface CourseFormProps {
 }
 
 export function CourseForm({ course, onSuccess, onCancel }: CourseFormProps) {
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -42,34 +44,36 @@ export function CourseForm({ course, onSuccess, onCancel }: CourseFormProps) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (course) {
-      // Update existing course
-      const { error } = await supabase
-        .from("courses")
-        .update(values)
-        .eq("id", course.id);
-      if (error) {
-        showError(error.message);
+  const createUpdateCourseMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      if (course) {
+        // Update existing course
+        const { error } = await supabase
+          .from("courses")
+          .update(values)
+          .eq("id", course.id);
+        if (error) throw error;
       } else {
-        showSuccess("Curso atualizado com sucesso!");
-        onSuccess();
+        // Create new course
+        const { error } = await supabase.from("courses").insert([values]);
+        if (error) throw error;
       }
-    } else {
-      // Create new course
-      const { error } = await supabase.from("courses").insert([values]);
-      if (error) {
-        showError(error.message);
-      } else {
-        showSuccess("Curso criado com sucesso!");
-        onSuccess();
-      }
-    }
-  }
+    },
+    onSuccess: () => {
+      showSuccess(course ? "Curso atualizado com sucesso!" : "Curso criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["adminCourses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses"] }); // Invalidate public courses list
+      queryClient.invalidateQueries({ queryKey: ["courseCategories"] }); // Invalidate categories
+      onSuccess();
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((values) => createUpdateCourseMutation.mutate(values))} className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -136,8 +140,10 @@ export function CourseForm({ course, onSuccess, onCancel }: CourseFormProps) {
           )}
         />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Salvar</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={createUpdateCourseMutation.isPending}>Cancelar</Button>
+          <Button type="submit" disabled={createUpdateCourseMutation.isPending}>
+            {createUpdateCourseMutation.isPending ? "Salvando..." : "Salvar"}
+          </Button>
         </div>
       </form>
     </Form>

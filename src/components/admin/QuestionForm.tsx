@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   question_text: z.string().min(5, "A pergunta é obrigatória e deve ter pelo menos 5 caracteres."),
@@ -40,6 +41,7 @@ interface QuestionFormProps {
 }
 
 export function QuestionForm({ question, moduleId, onSuccess, onCancel }: QuestionFormProps) {
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,40 +56,40 @@ export function QuestionForm({ question, moduleId, onSuccess, onCancel }: Questi
     name: "options",
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const questionData = {
-      ...values,
-      module_id: moduleId,
-      correct_option_index: values.correct_option_index,
-    };
+  const createUpdateQuestionMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const questionData = {
+        ...values,
+        module_id: moduleId,
+        correct_option_index: values.correct_option_index,
+      };
 
-    if (question) {
-      // Update existing question
-      const { error } = await supabase
-        .from("questions")
-        .update(questionData)
-        .eq("id", question.id);
-      if (error) {
-        showError(error.message);
+      if (question) {
+        // Update existing question
+        const { error } = await supabase
+          .from("questions")
+          .update(questionData)
+          .eq("id", question.id);
+        if (error) throw error;
       } else {
-        showSuccess("Pergunta atualizada com sucesso!");
-        onSuccess();
+        // Create new question
+        const { error } = await supabase.from("questions").insert([questionData]);
+        if (error) throw error;
       }
-    } else {
-      // Create new question
-      const { error } = await supabase.from("questions").insert([questionData]);
-      if (error) {
-        showError(error.message);
-      } else {
-        showSuccess("Pergunta criada com sucesso!");
-        onSuccess();
-      }
-    }
-  }
+    },
+    onSuccess: () => {
+      showSuccess(question ? "Pergunta atualizada com sucesso!" : "Pergunta criada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["adminQuestions", moduleId] });
+      onSuccess();
+    },
+    onError: (err: any) => {
+      showError("Erro ao salvar pergunta: " + err.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((values) => createUpdateQuestionMutation.mutate(values))} className="space-y-4">
         <FormField
           control={form.control}
           name="question_text"
@@ -123,7 +125,7 @@ export function QuestionForm({ question, moduleId, onSuccess, onCancel }: Questi
                 variant="destructive"
                 size="icon"
                 onClick={() => remove(index)}
-                disabled={fields.length <= 2}
+                disabled={fields.length <= 2 || createUpdateQuestionMutation.isPending}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -135,6 +137,7 @@ export function QuestionForm({ question, moduleId, onSuccess, onCancel }: Questi
             size="sm"
             onClick={() => append("")}
             className="w-full"
+            disabled={createUpdateQuestionMutation.isPending}
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Opção
           </Button>
@@ -146,7 +149,7 @@ export function QuestionForm({ question, moduleId, onSuccess, onCancel }: Questi
           render={({ field }) => (
             <FormItem>
               <FormLabel>Opção Correta</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={createUpdateQuestionMutation.isPending}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a opção correta" />
@@ -166,8 +169,10 @@ export function QuestionForm({ question, moduleId, onSuccess, onCancel }: Questi
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Salvar Pergunta</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={createUpdateQuestionMutation.isPending}>Cancelar</Button>
+          <Button type="submit" disabled={createUpdateQuestionMutation.isPending}>
+            {createUpdateQuestionMutation.isPending ? "Salvando Pergunta..." : "Salvar Pergunta"}
+          </Button>
         </div>
       </form>
     </Form>

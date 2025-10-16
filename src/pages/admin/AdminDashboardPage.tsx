@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabaseClient";
 import { BookCopy, MessageSquare, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,83 +15,18 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { showError } from "@/utils/toast";
-
-interface Stats {
-  users: number;
-  courses: number;
-  feedbacks: number;
-}
-
-interface Feedback {
-  id: string;
-  name: string;
-  message: string;
-  created_at: string;
-}
-
-interface MonthlySignupData {
-  month: string;
-  count: number;
-}
+import { useAdminDashboardData } from "@/hooks/use-admin-dashboard-data";
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [recentFeedbacks, setRecentFeedbacks] = useState<Feedback[]>([]);
-  const [monthlySignups, setMonthlySignups] = useState<MonthlySignupData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error } = useAdminDashboardData();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        console.log("Fetching user count...");
-        const { count: userCount, error: userCountError } = await supabase
-          .from("profiles")
-          .select("*", { count: "exact", head: true });
-        if (userCountError) throw userCountError;
-        console.log("User count:", userCount);
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar dados do painel: {error.message}</div>;
+  }
 
-        console.log("Fetching course count...");
-        const { count: courseCount, error: courseCountError } = await supabase
-          .from("courses")
-          .select("*", { count: "exact", head: true });
-        if (courseCountError) throw courseCountError;
-        console.log("Course count:", courseCount);
-
-        console.log("Fetching feedback data...");
-        const { data: feedbackData, count: feedbackCount, error: feedbackError } = await supabase
-          .from("feedbacks")
-          .select("*", { count: "exact" })
-          .order("created_at", { ascending: false })
-          .limit(5);
-        if (feedbackError) throw feedbackError;
-        console.log("Feedback data:", feedbackData, "Feedback count:", feedbackCount);
-
-        console.log("Fetching monthly signups...");
-        const { data: signupsData, error: signupsError } = await supabase
-          .rpc('get_monthly_signups');
-        if (signupsError) throw signupsError;
-        console.log("Monthly signups data:", signupsData);
-
-        setStats({
-          users: userCount ?? 0,
-          courses: courseCount ?? 0,
-          feedbacks: feedbackCount ?? 0,
-        });
-        
-        setRecentFeedbacks(feedbackData as Feedback[] || []);
-        setMonthlySignups(signupsData as MonthlySignupData[] || []);
-
-      } catch (error: any) {
-        showError("Erro ao carregar dados do painel: " + error.message);
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
+  const stats = data?.stats;
+  const recentFeedbacks = data?.recentFeedbacks;
+  const monthlySignups = data?.monthlySignups;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -102,7 +36,7 @@ export default function AdminDashboardPage() {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.users}</div>}
+          {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.users}</div>}
         </CardContent>
       </Card>
       <Card>
@@ -111,7 +45,7 @@ export default function AdminDashboardPage() {
           <BookCopy className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.courses}</div>}
+          {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.courses}</div>}
         </CardContent>
       </Card>
       <Card>
@@ -120,7 +54,7 @@ export default function AdminDashboardPage() {
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.feedbacks}</div>}
+          {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats?.feedbacks}</div>}
         </CardContent>
       </Card>
 
@@ -130,7 +64,7 @@ export default function AdminDashboardPage() {
           <CardDescription>Visão geral dos registros de usuários ao longo do tempo.</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
             <div className="h-64">
@@ -168,13 +102,13 @@ export default function AdminDashboardPage() {
           <CardDescription>As últimas 5 mensagens enviadas pelos usuários.</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
             <div className="space-y-4">
-              {recentFeedbacks.length > 0 ? recentFeedbacks.map((feedback) => (
+              {recentFeedbacks && recentFeedbacks.length > 0 ? recentFeedbacks.map((feedback) => (
                 <div key={feedback.id} className="flex items-start gap-4">
                   <Avatar className="hidden h-9 w-9 sm:flex">
                     <AvatarFallback>{feedback.name?.[0].toUpperCase()}</AvatarFallback>

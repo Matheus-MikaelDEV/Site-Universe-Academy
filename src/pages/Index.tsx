@@ -2,38 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CourseCard } from "@/components/course-card";
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-
-interface Course {
-  id: string;
-  title: string;
-  category: string;
-  instructor: string;
-  image_url: string;
-}
+import { useCourses } from "@/hooks/use-courses";
 
 const Index = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      // Fetch 3 courses for the homepage
-      const { data, error } = await supabase.from("courses").select("*").limit(3);
-      if (error) {
-        console.error("Error fetching courses:", error);
-      } else {
-        setCourses(data as Course[]);
-      }
-      setLoading(false);
-    };
-
-    fetchCourses();
-  }, []);
+  const { data: courses, isLoading } = useCourses({ limit: 3 });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -65,7 +41,7 @@ const Index = () => {
             <h2 className="text-3xl font-bold text-center mb-10">
               Cursos Populares
             </h2>
-            {loading ? (
+            {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex flex-col space-y-3">
@@ -79,7 +55,7 @@ const Index = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {courses.map((course) => (
+                {courses?.map((course) => (
                   <CourseCard
                     key={course.id}
                     id={course.id}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { showError } from "@/utils/toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSupabaseQuery } from "@/hooks/use-supabase-query";
 
 interface CertificateData {
   id: string;
@@ -27,13 +28,11 @@ interface CertificateData {
 
 const CertificateViewerPage = () => {
   const { certificateId } = useParams<{ certificateId: string }>();
-  const [certificate, setCertificate] = useState<CertificateData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchCertificate = async () => {
-      if (!certificateId) return;
-      setLoading(true);
+  const { data: certificate, isLoading, error } = useSupabaseQuery<CertificateData | null, Error>({
+    queryKey: ["certificate", certificateId],
+    queryFn: async () => {
+      if (!certificateId) return null;
       const { data, error } = await supabase
         .from("certificates")
         .select(
@@ -58,20 +57,37 @@ const CertificateViewerPage = () => {
 
       if (error) {
         showError("Erro ao carregar certificado: " + error.message);
-        console.error("Error fetching certificate:", error);
-      } else {
-        setCertificate(data as CertificateData);
+        throw error;
       }
-      setLoading(false);
-    };
+      return data as CertificateData;
+    },
+    enabled: !!certificateId,
+  });
 
-    fetchCertificate();
-  }, [certificateId]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen items-center justify-center p-4">
         <Skeleton className="h-96 w-full max-w-2xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle>Erro ao Carregar Certificado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive mb-4">
+              {error.message}
+            </p>
+            <Link to="/dashboard">
+              <Button>Voltar para o Painel</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }

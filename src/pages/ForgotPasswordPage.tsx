@@ -7,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
+import { useMutation } from "@tanstack/react-query";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um email válido." }),
@@ -18,17 +19,21 @@ const ForgotPasswordPage = () => {
     defaultValues: { email: "" },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      showError(error.message);
-    } else {
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       showSuccess("Se um email existir, um link para redefinir a senha foi enviado.");
-    }
-  }
+      form.reset();
+    },
+    onError: (error: any) => {
+      showError(error.message);
+    },
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40">
@@ -40,7 +45,7 @@ const ForgotPasswordPage = () => {
           </p>
         </div>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit((values) => resetPasswordMutation.mutate(values))} className="space-y-6">
             <FormField
               control={form.control}
               name="email"
@@ -54,8 +59,8 @@ const ForgotPasswordPage = () => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Enviar Link
+            <Button type="submit" className="w-full" disabled={resetPasswordMutation.isPending}>
+              {resetPasswordMutation.isPending ? "Enviando..." : "Enviar Link"}
             </Button>
           </form>
         </Form>

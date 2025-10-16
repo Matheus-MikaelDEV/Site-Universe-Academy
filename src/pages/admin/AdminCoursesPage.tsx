@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -10,29 +10,31 @@ import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { CourseForm } from "@/components/admin/CourseForm";
 import { Course } from "@/types/course";
 import { showError, showSuccess } from "@/utils/toast";
+import { useAdminCourses } from "@/hooks/use-admin-courses";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const fetchCourses = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("courses").select("*").order("created_at", { ascending: false });
-    if (error) {
-      console.error("Error fetching courses:", error);
-      showError("Falha ao carregar cursos.");
-    } else {
-      setCourses(data as Course[]);
-    }
-    setLoading(false);
-  };
+  const { data: courses, isLoading, error } = useAdminCourses();
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      const { error } = await supabase.from("courses").delete().eq("id", courseId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Curso deletado com sucesso.");
+      queryClient.invalidateQueries({ queryKey: ["adminCourses"] });
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
+  });
 
   const handleEdit = (course: Course) => {
     setSelectedCourse(course);
@@ -44,22 +46,19 @@ export default function AdminCoursesPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (courseId: string) => {
+  const handleDelete = (courseId: string) => {
     if (!window.confirm("Tem certeza que deseja deletar este curso? Esta ação não pode ser desfeita.")) return;
-    
-    const { error } = await supabase.from("courses").delete().eq("id", courseId);
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess("Curso deletado com sucesso.");
-      fetchCourses();
-    }
+    deleteCourseMutation.mutate(courseId);
   };
 
   const handleFormSuccess = () => {
     setIsDialogOpen(false);
-    fetchCourses();
+    queryClient.invalidateQueries({ queryKey: ["adminCourses"] });
   };
+
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar cursos: {error.message}</div>;
+  }
 
   return (
     <>
@@ -85,9 +84,16 @@ export default function AdminCoursesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center">Carregando...</TableCell></TableRow>
-              ) : courses.length > 0 ? (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-6" /></TableCell>
+                  </TableRow>
+                ))
+              ) : courses && courses.length > 0 ? (
                 courses.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell className="font-medium">{course.title}</TableCell>
@@ -104,7 +110,7 @@ export default function AdminCoursesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => navigate(`/admin/courses/${course.id}/manage`)}>Gerenciar Conteúdo</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(course)}>Editar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(course.id)} className="text-destructive">Deletar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(course.id)} className="text-destructive" disabled={deleteCourseMutation.isPending}>Deletar</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

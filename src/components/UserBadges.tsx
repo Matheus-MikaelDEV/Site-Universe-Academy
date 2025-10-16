@@ -1,50 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showError } from "@/utils/toast";
-
-interface UserBadge {
-  id: string;
-  badge_name: string;
-  awarded_at: string;
-}
+import { useUserBadges } from "@/hooks/use-user-badges";
 
 export const UserBadges = () => {
-  const { user, loading: authLoading } = useAuth();
-  const [badges, setBadges] = useState<UserBadge[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: badges, isLoading, error } = useUserBadges();
 
-  useEffect(() => {
-    const fetchBadges = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("user_badges")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("awarded_at", { ascending: false });
-
-      if (error) {
-        showError("Erro ao carregar conquistas: " + error.message);
-      } else {
-        setBadges(data || []);
-      }
-      setLoading(false);
-    };
-
-    if (!authLoading) {
-      fetchBadges();
-    }
-  }, [user, authLoading]);
-
-  if (loading || authLoading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -59,6 +23,10 @@ export const UserBadges = () => {
     );
   }
 
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar conquistas: {error.message}</div>;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -68,7 +36,7 @@ export const UserBadges = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {badges.length > 0 ? (
+        {badges && badges.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {badges.map((badge) => (
               <Badge key={badge.id} variant="default" className="bg-yellow-500 hover:bg-yellow-600 text-white">

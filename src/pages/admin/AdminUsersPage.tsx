@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +7,7 @@ import { Profile } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MoreHorizontal, Pencil, RotateCcw } from "lucide-react"; // Alterado de LockReset para RotateCcw
+import { MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,6 +15,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showError, showSuccess } from "@/utils/toast";
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const profileEditSchema = z.object({
   full_name: z.string().min(3, "Nome completo é obrigatório."),
@@ -23,10 +26,11 @@ const profileEditSchema = z.object({
 });
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: users, isLoading, error } = useAdminUsers();
 
   const form = useForm<z.infer<typeof profileEditSchema>>({
     resolver: zodResolver(profileEditSchema),
@@ -37,25 +41,29 @@ export default function AdminUsersPage() {
     },
   });
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("full_name");
-    
-    if (error) {
-      console.error("Error fetching users:", error);
-      showError("Falha ao carregar usuários.");
-    } else {
-      setUsers(data);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const updateProfileMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof profileEditSchema>) => {
+      if (!selectedUser) throw new Error("Nenhum usuário selecionado para atualização.");
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: values.full_name,
+          cpf: values.cpf,
+          role: values.role,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedUser.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Perfil do usuário atualizado com sucesso!");
+      setIsEditDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+    },
+    onError: (err: any) => {
+      showError("Erro ao atualizar perfil: " + err.message);
+    },
+  });
 
   const handleEdit = (user: Profile) => {
     setSelectedUser(user);
@@ -70,9 +78,6 @@ export default function AdminUsersPage() {
   const handleResetPassword = async (userId: string, userEmail: string) => {
     if (!window.confirm(`Tem certeza que deseja enviar um email de redefinição de senha para ${userEmail}?`)) return;
 
-    // Supabase Admin API requires service_role key, which is not directly accessible from client-side.
-    // This would typically be handled by an Edge Function or a server-side call.
-    // For now, we'll simulate the client-side reset password flow.
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -84,27 +89,9 @@ export default function AdminUsersPage() {
     }
   };
 
-  const onSubmitEdit = async (values: z.infer<typeof profileEditSchema>) => {
-    if (!selectedUser) return;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: values.full_name,
-        cpf: values.cpf,
-        role: values.role,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedUser.id);
-
-    if (error) {
-      showError("Erro ao atualizar perfil: " + error.message);
-    } else {
-      showSuccess("Perfil do usuário atualizado com sucesso!");
-      setIsEditDialogOpen(false);
-      fetchUsers();
-    }
-  };
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar usuários: {error.message}</div>;
+  }
 
   return (
     <>
@@ -125,9 +112,17 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center">Carregando...</TableCell></TableRow>
-              ) : users.length > 0 ? (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-6" /></TableCell>
+                  </TableRow>
+                ))
+              ) : users && users.length > 0 ? (
                 users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.full_name}</TableCell>
@@ -150,9 +145,9 @@ export default function AdminUsersPage() {
                           <DropdownMenuItem onClick={() => handleEdit(user)}>
                             <Pencil className="mr-2 h-4 w-4" /> Editar Perfil
                           </DropdownMenuItem>
-                          {user.email && ( // Only show if email is available for reset
+                          {user.email && (
                             <DropdownMenuItem onClick={() => handleResetPassword(user.id, user.email!)}>
-                              <RotateCcw className="mr-2 h-4 w-4" /> Redefinir Senha {/* Alterado aqui */}
+                              <RotateCcw className="mr-2 h-4 w-4" /> Redefinir Senha
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -174,7 +169,7 @@ export default function AdminUsersPage() {
             <DialogTitle>Editar Perfil do Usuário</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitEdit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit((values) => updateProfileMutation.mutate(values))} className="space-y-4">
               <FormField
                 control={form.control}
                 name="full_name"
@@ -224,7 +219,7 @@ export default function AdminUsersPage() {
               />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit">Salvar Alterações</Button>
+                <Button type="submit" disabled={updateProfileMutation.isPending}>Salvar Alterações</Button>
               </div>
             </form>
           </Form>

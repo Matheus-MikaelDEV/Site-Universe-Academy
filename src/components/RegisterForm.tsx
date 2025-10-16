@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 
 const formSchema = z.object({
   fullName: z.string().min(3, { message: "O nome completo é obrigatório." }),
@@ -34,29 +35,32 @@ export function RegisterForm() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        data: {
-          full_name: values.fullName,
-          cpf: values.cpf,
+  const registerMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const { error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            full_name: values.fullName,
+            cpf: values.cpf,
+          },
         },
-      },
-    });
-
-    if (error) {
-      showError(error.message);
-    } else {
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       showSuccess("Conta criada! Verifique seu email para confirmação.");
       navigate("/login");
-    }
-  }
+    },
+    onError: (error: any) => {
+      showError(error.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit((values) => registerMutation.mutate(values))} className="space-y-6">
         <FormField
           control={form.control}
           name="fullName"
@@ -109,8 +113,8 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-          Criar Conta
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={registerMutation.isPending}>
+          {registerMutation.isPending ? "Criando Conta..." : "Criar Conta"}
         </Button>
       </form>
     </Form>

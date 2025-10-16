@@ -1,39 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-interface Feedback {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  created_at: string;
-}
+import { useAdminFeedbacks } from "@/hooks/use-admin-feedbacks";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminFeedbackPage() {
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: feedbacks, isLoading, error } = useAdminFeedbacks();
 
-  useEffect(() => {
-    const fetchFeedbacks = async () => {
-      const { data, error } = await supabase
-        .from("feedbacks")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching feedbacks:", error);
-      } else {
-        setFeedbacks(data);
-      }
-      setLoading(false);
-    };
-
-    fetchFeedbacks();
-  }, []);
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar feedbacks: {error.message}</div>;
+  }
 
   return (
     <Card>
@@ -52,9 +30,16 @@ export default function AdminFeedbackPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center">Carregando...</TableCell></TableRow>
-            ) : feedbacks.length > 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                </TableRow>
+              ))
+            ) : feedbacks && feedbacks.length > 0 ? (
               feedbacks.map((feedback) => (
                 <TableRow key={feedback.id}>
                   <TableCell>{format(new Date(feedback.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { supabase } from "@/lib/supabaseClient";
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { showError } from "@/utils/toast";
+import { useSupabaseQuery } from "@/hooks/use-supabase-query";
 
 interface LeaderboardEntry {
   id: string;
@@ -17,29 +17,22 @@ interface LeaderboardEntry {
 }
 
 const LeaderboardPage = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true);
+  const { data: leaderboard, isLoading, error } = useSupabaseQuery<LeaderboardEntry[], Error>({
+    queryKey: ["leaderboard"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url, points")
         .order("points", { ascending: false })
-        .limit(10); // Top 10 usuários
+        .limit(10);
+      if (error) throw error;
+      return data as LeaderboardEntry[];
+    },
+  });
 
-      if (error) {
-        showError("Erro ao carregar leaderboard: " + error.message);
-        console.error("Error fetching leaderboard:", error);
-      } else {
-        setLeaderboard(data || []);
-      }
-      setLoading(false);
-    };
-
-    fetchLeaderboard();
-  }, []);
+  if (error) {
+    return <div className="text-destructive">Erro ao carregar leaderboard: {error.message}</div>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -63,7 +56,7 @@ const LeaderboardPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-6 w-6" /></TableCell>
@@ -74,7 +67,7 @@ const LeaderboardPage = () => {
                       <TableCell className="text-right"><Skeleton className="h-6 w-12 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : leaderboard.length > 0 ? (
+                ) : leaderboard && leaderboard.length > 0 ? (
                   leaderboard.map((entry, index) => (
                     <TableRow key={entry.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>

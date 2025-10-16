@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { supabase } from "@/lib/supabaseClient";
@@ -8,79 +8,53 @@ import { Button } from "@/components/ui/button";
 import { MailOpen, Bell, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Notification {
-  id: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-  type: string;
-}
+import { useUserNotifications } from "@/hooks/use-user-notifications";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const NotificationsPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchNotifications = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+  const { data: notifications, isLoading, error } = useUserNotifications();
 
-    if (error) {
-      showError("Erro ao carregar notificações: " + error.message);
-    } else {
-      setNotifications(data || []);
-    }
-    setLoading(false);
-  };
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userNotifications", user?.id] });
+    },
+    onError: (err: any) => {
+      showError("Erro ao marcar como lida: " + err.message);
+    },
+  });
 
-  useEffect(() => {
-    if (!authLoading) {
-      fetchNotifications();
-    }
-  }, [user, authLoading]);
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userNotifications", user?.id] });
+      showSuccess("Todas as notificações foram marcadas como lidas!");
+    },
+    onError: (err: any) => {
+      showError("Erro ao marcar todas como lidas: " + err.message);
+    },
+  });
 
-  const markAsRead = async (notificationId: string) => {
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notificationId);
-
-    if (error) {
-      showError("Erro ao marcar como lida: " + error.message);
-    } else {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-      );
-    }
-  };
-
-  const markAllAsRead = async () => {
-    if (!user) return;
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("user_id", user.id)
-      .eq("is_read", false);
-
-    if (error) {
-      showError("Erro ao marcar todas como lidas: " + error.message);
-    } else {
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    }
-  };
-
-  if (loading || authLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -96,6 +70,20 @@ const NotificationsPage = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow container py-12">
+          <div className="text-destructive">Erro ao carregar notificações: {error.message}</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const unreadNotificationsExist = notifications?.some(n => !n.is_read);
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -106,12 +94,15 @@ const NotificationsPage = () => {
               <CardTitle className="text-3xl font-bold">Minhas Notificações</CardTitle>
               <CardDescription>Todas as suas atualizações e alertas importantes.</CardDescription>
             </div>
-            <Button onClick={markAllAsRead} disabled={notifications.every(n => n.is_read) || notifications.length === 0}>
-              <MailOpen className="mr-2 h-4 w-4" /> Marcar todas como lidas
+            <Button 
+              onClick={() => markAllAsReadMutation.mutate()} 
+              disabled={!unreadNotificationsExist || markAllAsReadMutation.isPending}
+            >
+              <MailOpen className="mr-2 h-4 w-4" /> {markAllAsReadMutation.isPending ? "Marcando..." : "Marcar todas como lidas"}
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {notifications.length > 0 ? (
+            {notifications && notifications.length > 0 ? (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
@@ -129,7 +120,13 @@ const NotificationsPage = () => {
                     </p>
                   </div>
                   {!notification.is_read && (
-                    <Button variant="ghost" size="icon" onClick={() => markAsRead(notification.id)} className="flex-shrink-0">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => markAsReadMutation.mutate(notification.id)} 
+                      className="flex-shrink-0"
+                      disabled={markAsReadMutation.isPending}
+                    >
                       <XCircle className="h-4 w-4 text-muted-foreground hover:text-primary" />
                       <span className="sr-only">Marcar como lida</span>
                     </Button>

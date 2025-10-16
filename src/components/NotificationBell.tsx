@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Bell, MailOpen, XCircle } from "lucide-react";
 import {
   DropdownMenu,
@@ -15,40 +15,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { showError } from "@/utils/toast";
-
-interface Notification {
-  id: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-  type: string;
-}
+import { useUserNotifications } from "@/hooks/use-user-notifications";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const NotificationBell = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const queryClient = useQueryClient();
 
-  const fetchNotifications = async () => {
-    if (!user) return;
+  const { data: notifications, isLoading, error } = useUserNotifications(5); // Fetch recent 5 notifications
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(5); // Fetch recent notifications
-
-    if (error) {
-      showError("Erro ao carregar notificações: " + error.message);
-    } else {
-      setNotifications(data || []);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
-    }
-  };
+  const unreadCount = notifications?.filter((n) => !n.is_read).length || 0;
 
   useEffect(() => {
-    fetchNotifications();
+    if (!user) return;
 
     // Realtime subscription for new notifications
     const channel = supabase
@@ -62,9 +41,8 @@ export const NotificationBell = () => {
           filter: `user_id=eq.${user?.id}`,
         },
         (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications((prev) => [newNotification, ...prev].slice(0, 5));
-          setUnreadCount((prev) => prev + 1);
+          // Invalidate query to refetch latest notifications
+          queryClient.invalidateQueries({ queryKey: ["userNotifications", user?.id] });
         }
       )
       .subscribe();
@@ -72,23 +50,40 @@ export const NotificationBell = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, queryClient]);
 
-  const markAsRead = async (notificationId: string) => {
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notificationId);
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userNotifications", user?.id] });
+    },
+    onError: (err: any) => {
+      showError("Erro ao marcar como lida: " + err.message);
+    },
+  });
 
-    if (error) {
-      showError("Erro ao marcar como lida: " + error.message);
-    } else {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    }
-  };
+  if (isLoading) {
+    return (
+      <Button variant="ghost" size="icon" className="relative">
+        <Bell className="h-5 w-5 animate-pulse" />
+      </Button>
+    );
+  }
+
+  if (error) {
+    console.error("Error fetching notifications for bell:", error);
+    return (
+      <Button variant="ghost" size="icon" className="relative">
+        <Bell className="h-5 w-5 text-destructive" />
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -109,12 +104,13 @@ export const NotificationBell = () => {
       <DropdownMenuContent className="w-80" align="end" forceMount>
         <DropdownMenuLabel>Notificações</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {notifications.length > 0 ? (
+        {notifications && notifications.length > 0 ? (
           notifications.map((notification) => (
             <DropdownMenuItem
               key={notification.id}
               className="flex flex-col items-start space-y-1"
-              onSelect={() => !notification.is_read && markAsRead(notification.id)}
+              onSelect={() => !notification.is_read && markAsReadMutation.mutate(notification.id)}
+              disabled={markAsReadMutation.isPending}
             >
               <div className="flex justify-between w-full">
                 <p className="text-sm font-medium">{notification.message}</p>
@@ -136,8 +132,8 @@ export const NotificationBell = () => {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="justify-center text-primary">
-          Ver todas as notificações (Em breve)
+        <DropdownMenuItem className="justify-center text-primary" onClick={() => window.location.href = "/notificacoes"}>
+          Ver todas as notificações
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

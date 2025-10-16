@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import React, { useState } from "react";
 import { CourseCard } from "@/components/course-card";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -7,75 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { showError } from "@/utils/toast"; // Import showError
-
-interface Course {
-  id: string;
-  title: string;
-  category: string;
-  instructor: string;
-  image_url: string;
-}
+import { useCourses, useCourseCategories } from "@/hooks/use-courses";
 
 const CoursesPage = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [categories, setCategories] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchCoursesAndCategories = async () => {
-      setLoading(true);
-      console.log("Iniciando busca de cursos e categorias...");
-
-      try {
-        console.log("Tentando buscar cursos...");
-        const { data: coursesData, error: coursesError } = await supabase.from("courses").select("id, title, category, instructor, image_url").order("title", { ascending: true });
-        
-        console.log("Supabase courses response - data:", coursesData, "error:", coursesError); // NOVO LOG
-        if (coursesError) {
-          console.error("Erro ao buscar cursos do Supabase:", coursesError);
-          showError("Falha ao carregar cursos: " + coursesError.message);
-          setCourses([]);
-        } else {
-          console.log("Cursos carregados:", coursesData);
-          setCourses(coursesData as Course[]);
-        }
-
-        console.log("Tentando buscar categorias...");
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from("courses")
-          .select("category")
-          .not("category", "is", null);
-        
-        console.log("Supabase categories response - data:", categoriesData, "error:", categoriesError); // NOVO LOG
-        if (categoriesError) {
-          console.error("Erro ao buscar categorias do Supabase:", categoriesError);
-        } else {
-          console.log("Dados brutos de categorias:", categoriesData);
-          const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category))).filter(Boolean); // Filter out null/undefined categories
-          console.log("Categorias únicas processadas:", uniqueCategories);
-          setCategories(uniqueCategories as string[]);
-        }
-      } catch (e: any) {
-        console.error("Erro inesperado durante a busca de cursos/categorias:", e);
-        showError("Ocorreu um erro inesperado: " + e.message);
-      } finally {
-        setLoading(false);
-        console.log("Busca de cursos e categorias finalizada. Loading set to false.");
-      }
-    };
-
-    fetchCoursesAndCategories();
-  }, []);
-
-  const filteredCourses = courses.filter((course) => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || course.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const { data: courses, isLoading: coursesLoading } = useCourses({ searchTerm, category: selectedCategory });
+  const { data: categories, isLoading: categoriesLoading } = useCourseCategories();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -100,16 +38,20 @@ const CoursesPage = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as Categorias</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
+              {categoriesLoading ? (
+                <SelectItem value="loading" disabled>Carregando categorias...</SelectItem>
+              ) : (
+                categories?.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
 
-        {loading ? (
+        {coursesLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex flex-col space-y-3">
@@ -121,9 +63,9 @@ const CoursesPage = () => {
               </div>
             ))}
           </div>
-        ) : filteredCourses.length > 0 ? (
+        ) : courses && courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredCourses.map((course) => (
+            {courses.map((course) => (
               <CourseCard
                 key={course.id}
                 id={course.id}

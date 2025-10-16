@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { Module } from "@/types/module";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   title: z.string().min(3, "O título é obrigatório."),
@@ -31,6 +32,7 @@ interface ModuleFormProps {
 }
 
 export function ModuleForm({ module, courseId, onSuccess, onCancel }: ModuleFormProps) {
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -41,36 +43,37 @@ export function ModuleForm({ module, courseId, onSuccess, onCancel }: ModuleForm
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const moduleData = { ...values, course_id: courseId };
+  const createUpdateModuleMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const moduleData = { ...values, course_id: courseId };
 
-    if (module) {
-      // Update existing module
-      const { error } = await supabase
-        .from("modules")
-        .update(moduleData)
-        .eq("id", module.id);
-      if (error) {
-        showError(error.message);
+      if (module) {
+        // Update existing module
+        const { error } = await supabase
+          .from("modules")
+          .update(moduleData)
+          .eq("id", module.id);
+        if (error) throw error;
       } else {
-        showSuccess("Módulo atualizado com sucesso!");
-        onSuccess();
+        // Create new module
+        const { error } = await supabase.from("modules").insert([moduleData]);
+        if (error) throw error;
       }
-    } else {
-      // Create new module
-      const { error } = await supabase.from("modules").insert([moduleData]);
-      if (error) {
-        showError(error.message);
-      } else {
-        showSuccess("Módulo criado com sucesso!");
-        onSuccess();
-      }
-    }
-  }
+    },
+    onSuccess: () => {
+      showSuccess(module ? "Módulo atualizado com sucesso!" : "Módulo criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["adminModules", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["courseDetails", courseId] }); // Invalidate course details to update module list
+      onSuccess();
+    },
+    onError: (err: any) => {
+      showError("Erro ao salvar módulo: " + err.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((values) => createUpdateModuleMutation.mutate(values))} className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -124,8 +127,10 @@ export function ModuleForm({ module, courseId, onSuccess, onCancel }: ModuleForm
           )}
         />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Salvar Módulo</Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={createUpdateModuleMutation.isPending}>Cancelar</Button>
+          <Button type="submit" disabled={createUpdateModuleMutation.isPending}>
+            {createUpdateModuleMutation.isPending ? "Salvando Módulo..." : "Salvar Módulo"}
+          </Button>
         </div>
       </form>
     </Form>

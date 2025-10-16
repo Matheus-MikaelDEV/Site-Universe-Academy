@@ -4,11 +4,13 @@ import { ProfileForm } from "@/components/ProfileForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useProfileData } from "@/hooks/use-profile-data";
 
 const ProfilePage = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { data: profile, isLoading: profileLoading } = useProfileData();
 
-  if (loading) {
+  if (authLoading || profileLoading) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -36,7 +38,7 @@ const ProfilePage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {user && <ProfileForm user={user} />}
+            {user && profile && <ProfileForm user={user} profile={profile} />}
           </CardContent>
         </Card>
       </main>

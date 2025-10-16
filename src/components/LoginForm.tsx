@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um email válido." }),
@@ -22,6 +23,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -30,39 +32,45 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
+  const loginMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+      if (error) throw error;
+      return data.user;
+    },
+    onSuccess: async (user) => {
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
 
-    if (error) {
-      showError(error.message);
-    } else if (data.user) {
-      // Check user role for redirection
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError) {
-        showError("Não foi possível verificar seu perfil. Redirecionando para o painel padrão.");
-        navigate("/dashboard");
-      } else {
-        showSuccess("Login realizado com sucesso!");
-        if (profileData?.role === 'admin') {
-          navigate("/admin/dashboard");
-        } else {
+        if (profileError) {
+          showError("Não foi possível verificar seu perfil. Redirecionando para o painel padrão.");
           navigate("/dashboard");
+        } else {
+          showSuccess("Login realizado com sucesso!");
+          queryClient.invalidateQueries({ queryKey: ["profile", user.id] }); // Invalidate profile query
+          if (profileData?.role === 'admin') {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/dashboard");
+          }
         }
       }
-    }
-  }
+    },
+    onError: (error: any) => {
+      showError(error.message);
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit((values) => loginMutation.mutate(values))} className="space-y-6">
         <FormField
           control={form.control}
           name="email"
@@ -89,8 +97,8 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-          Entrar
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? "Entrando..." : "Entrar"}
         </Button>
       </form>
     </Form>

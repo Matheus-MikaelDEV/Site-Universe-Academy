@@ -16,38 +16,37 @@ import { showError, showSuccess } from "@/utils/toast";
 import { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Profile } from "@/contexts/AuthContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   fullName: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
-  cpf: z.string().optional(),
+  cpf: z.string().optional().nullable(),
   avatarFile: z.instanceof(File).optional(),
 });
 
 interface ProfileFormProps {
   user: User;
+  profile: Profile;
 }
 
-export function ProfileForm({ user }: ProfileFormProps) {
-  const { profile } = useAuth();
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function ProfileForm({ user, profile }: ProfileFormProps) {
+  const queryClient = useQueryClient();
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url || null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      cpf: "",
+      fullName: profile.full_name || "",
+      cpf: profile.cpf || "",
       avatarFile: undefined,
     },
   });
 
   useEffect(() => {
-    if (profile) {
-      form.setValue("fullName", profile.full_name || "");
-      form.setValue("cpf", profile.cpf || "");
-      setAvatarPreview(profile.avatar_url || null);
-    }
+    form.setValue("fullName", profile.full_name || "");
+    form.setValue("cpf", profile.cpf || "");
+    setAvatarPreview(profile.avatar_url || null);
   }, [profile, form]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,10 +57,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
     }
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    try {
-      let avatarUrl = profile?.avatar_url;
+  const updateProfileMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      let avatarUrl = profile.avatar_url;
 
       if (values.avatarFile) {
         const file = values.avatarFile;
@@ -92,27 +90,30 @@ export function ProfileForm({ user }: ProfileFormProps) {
         .eq('id', user.id);
 
       if (error) throw error;
-
+      return avatarUrl;
+    },
+    onSuccess: (newAvatarUrl) => {
       showSuccess("Perfil atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      // Manually update avatar in AuthContext if needed, or rely on full page reload
+      // For now, a simple reload to ensure header avatar updates
       setTimeout(() => window.location.reload(), 1000);
-
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       showError(error.message || "Ocorreu um erro ao atualizar o perfil.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+    },
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit((values) => updateProfileMutation.mutate(values))} className="space-y-6">
         <FormField
           control={form.control}
           name="avatarFile"
           render={() => (
             <FormItem className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={avatarPreview || undefined} loading="lazy" /> {/* Added lazy loading */}
+                <AvatarImage src={avatarPreview || undefined} loading="lazy" />
                 <AvatarFallback>{profile?.full_name?.[0] || user.email?.[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -150,8 +151,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+        <Button type="submit" className="w-full" disabled={updateProfileMutation.isPending}>
+          {updateProfileMutation.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </form>
     </Form>

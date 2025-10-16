@@ -6,12 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MoreHorizontal, PlusCircle, BookOpenText } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, PlusCircle } from "lucide-react";
 import { Course } from "@/types/course";
 import { Module } from "@/types/module";
 import { ModuleForm } from "@/components/admin/ModuleForm";
-import { QuestionForm } from "@/components/admin/QuestionForm"; // Import QuestionForm
+import { QuestionForm } from "@/components/admin/QuestionForm";
 import { showError, showSuccess } from "@/utils/toast";
+import { useAdminModules } from "@/hooks/use-admin-modules";
+import { useAdminQuestions } from "@/hooks/use-admin-questions";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Question {
   id: string;
@@ -23,55 +27,61 @@ interface Question {
 export default function AdminManageCourseContentPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [currentModuleForQuestions, setCurrentModuleForQuestions] = useState<Module | null>(null);
-  const [moduleQuestions, setModuleQuestions] = useState<Question[]>([]);
+  const queryClient = useQueryClient();
 
-  const fetchCourseAndModules = async () => {
-    if (!courseId) return;
-    setLoading(true);
-    const { data: courseData, error: courseError } = await supabase
-      .from("courses").select("*").eq("id", courseId).single();
-
-    if (courseError) {
-      showError("Falha ao carregar o curso.");
-    } else {
-      setCourse(courseData);
-    }
-
-    const { data: modulesData, error: modulesError } = await supabase
-      .from("modules").select("*").eq("course_id", courseId).order("module_order");
-
-    if (modulesError) {
-      showError("Falha ao carregar os módulos.");
-    } else {
-      setModules(modulesData);
-    }
-    setLoading(false);
-  };
-
-  const fetchModuleQuestions = async (moduleId: string) => {
-    const { data, error } = await supabase
-      .from("questions")
-      .select("*")
-      .eq("module_id", moduleId)
-      .order("created_at", { ascending: true });
-    
-    if (error) {
-      showError("Erro ao carregar perguntas do módulo: " + error.message);
-      return [];
-    }
-    return data;
-  };
+  const { data: modules, isLoading: modulesLoading, error: modulesError } = useAdminModules(courseId);
+  const { data: moduleQuestions, isLoading: questionsLoading, error: questionsError, refetch: refetchQuestions } = useAdminQuestions(currentModuleForQuestions?.id);
 
   useEffect(() => {
-    fetchCourseAndModules();
+    const fetchCourse = async () => {
+      if (!courseId) return;
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("id", courseId)
+        .single();
+      if (error) {
+        showError("Falha ao carregar o curso: " + error.message);
+      } else {
+        setCourse(data);
+      }
+    };
+    fetchCourse();
   }, [courseId]);
+
+  const deleteModuleMutation = useMutation({
+    mutationFn: async (moduleId: string) => {
+      const { error } = await supabase.from("modules").delete().eq("id", moduleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Módulo deletado com sucesso.");
+      queryClient.invalidateQueries({ queryKey: ["adminModules", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["adminQuestions"] }); // Invalidate all questions
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const { error } = await supabase.from("questions").delete().eq("id", questionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Pergunta deletada com sucesso.");
+      refetchQuestions(); // Refetch questions for the current module
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
+  });
 
   const handleCreateModule = () => {
     setSelectedModule(null);
@@ -83,26 +93,19 @@ export default function AdminManageCourseContentPage() {
     setIsModuleDialogOpen(true);
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
+  const handleDeleteModule = (moduleId: string) => {
     if (!window.confirm("Tem certeza que deseja deletar este módulo? Isso também deletará todas as perguntas associadas.")) return;
-    const { error } = await supabase.from("modules").delete().eq("id", moduleId);
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess("Módulo deletado com sucesso.");
-      fetchCourseAndModules();
-    }
+    deleteModuleMutation.mutate(moduleId);
   };
 
   const handleModuleFormSuccess = () => {
     setIsModuleDialogOpen(false);
-    fetchCourseAndModules();
+    queryClient.invalidateQueries({ queryKey: ["adminModules", courseId] });
   };
 
-  const handleManageQuestions = async (module: Module) => {
+  const handleManageQuestions = (module: Module) => {
     setCurrentModuleForQuestions(module);
-    const questions = await fetchModuleQuestions(module.id);
-    setModuleQuestions(questions);
+    queryClient.invalidateQueries({ queryKey: ["adminQuestions", module.id] }); // Ensure questions are refetched for this module
   };
 
   const handleCreateQuestion = () => {
@@ -115,30 +118,19 @@ export default function AdminManageCourseContentPage() {
     setIsQuestionDialogOpen(true);
   };
 
-  const handleDeleteQuestion = async (questionId: string) => {
+  const handleDeleteQuestion = (questionId: string) => {
     if (!window.confirm("Tem certeza que deseja deletar esta pergunta?")) return;
-    const { error } = await supabase.from("questions").delete().eq("id", questionId);
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess("Pergunta deletada com sucesso.");
-      if (currentModuleForQuestions) {
-        const questions = await fetchModuleQuestions(currentModuleForQuestions.id);
-        setModuleQuestions(questions);
-      }
-    }
+    deleteQuestionMutation.mutate(questionId);
   };
 
-  const handleQuestionFormSuccess = async () => {
+  const handleQuestionFormSuccess = () => {
     setIsQuestionDialogOpen(false);
-    if (currentModuleForQuestions) {
-      const questions = await fetchModuleQuestions(currentModuleForQuestions.id);
-      setModuleQuestions(questions);
-    }
+    refetchQuestions(); // Refetch questions for the current module
   };
 
-  if (loading) return <div>Carregando...</div>;
-  if (!course) return <div>Curso não encontrado.</div>;
+  if (!course) return <Skeleton className="h-96 w-full" />;
+  if (modulesError) return <div className="text-destructive">Erro ao carregar módulos: {modulesError.message}</div>;
+  if (questionsError) return <div className="text-destructive">Erro ao carregar perguntas: {questionsError.message}</div>;
 
   return (
     <>
@@ -170,7 +162,16 @@ export default function AdminManageCourseContentPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {modules.length > 0 ? (
+                {modulesLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-6" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : modules && modules.length > 0 ? (
                   modules.map((module) => (
                     <TableRow key={module.id}>
                       <TableCell className="font-medium">{module.title}</TableCell>
@@ -186,7 +187,7 @@ export default function AdminManageCourseContentPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleManageQuestions(module)}>Gerenciar Perguntas</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditModule(module)}>Editar Módulo</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteModule(module.id)} className="text-destructive">Deletar Módulo</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteModule(module.id)} className="text-destructive" disabled={deleteModuleMutation.isPending}>Deletar Módulo</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -223,7 +224,14 @@ export default function AdminManageCourseContentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {moduleQuestions.length > 0 ? (
+                  {questionsLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-6 w-full" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-6" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : moduleQuestions && moduleQuestions.length > 0 ? (
                     moduleQuestions.map((question) => (
                       <TableRow key={question.id}>
                         <TableCell className="font-medium">{question.question_text}</TableCell>
@@ -236,7 +244,7 @@ export default function AdminManageCourseContentPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEditQuestion(question)}>Editar Pergunta</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteQuestion(question.id)} className="text-destructive">Deletar Pergunta</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteQuestion(question.id)} className="text-destructive" disabled={deleteQuestionMutation.isPending}>Deletar Pergunta</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
