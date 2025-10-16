@@ -5,18 +5,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const idealizers = [
   {
-    name: "Ana Silva",
-    role: "CEO & Fundadora",
-    avatar: "/placeholder.svg",
-    fallback: "AS",
-    bio: "Ana é uma educadora apaixonada com mais de 15 anos de experiência em tecnologia educacional. Sua visão é criar uma plataforma que capacite professores a moldar o futuro da educação.",
-  },
-  {
-    name: "Carlos Mendes",
-    role: "Chefe de Pedagogia",
-    avatar: "/placeholder.svg",
-    fallback: "CM",
-    bio: "Com doutorado em Ciências da Educação, Carlos é o cérebro por trás da nossa metodologia de ensino inovadora. Ele garante que cada curso seja pedagogicamente sólido e altamente engajador.",
+    name: "Professor Dr. Plauto Simão de Carvalho",
+    role: "Professor Titular da Universidade Estadual de Goiás (UEG)",
+    avatar: "/plauto.png",
+    fallback: "PS",
+    bio: "O Professor Dr. Plauto Simão de Carvalho é Licenciado em Biologia (2004) pela Universidade Estadual de Goiás (UEG) com formação em coleta e estudos botânicos da flora do Cerrado, técnicas de herbário, e Anatomia Vegetal; Especialista em Biologia Vegetal (2006) pela Universidade Estadual de Goiás (UEG) com enfoque em estudos fitossociológicos e comunidades de plantas lenhosas de cerrado sentido restrito; Mestre em Botânica (2008) pela Universidade de Brasília (UnB) com enfoque em taxonomia de Myrtaceae, Doutor em Ecologia (2013) pela Universidade de Brasília (UnB) e Doutorado Sanduíche (2012) pela University of Oxford e Royal Botanic Gardens (Kew) com enfoque em ecologia de populações, sistemática filogenética e biogeografia de plantas da família Myrtaceae. Atualmente sou professor titular da Universidade Estadual de Goiás (UEG), atuo na graduação para os cursos de Biologia e Agronomia, sou membro permanente do PPG Ensino de Ciências - PPEC/UEG (2007-atual), coordenei o PPEC entre 2019-2024, atualmente sou vice-coordenador (2024-atual), com enfoque na formação de formação de professores, Metodologias Ativas de Ensino e Aprendizagem Significativa, coordenei Pibid Biologia/UEG entre 2006-2009, retomando como coordenador de área do Pibid/Biologia UEG Palmeiras de Goiás. Meus interesses são estudos de biodiversidade e ecologia do Cerrado, flora de Angiospermas e Sistemática Filogenética, Anatomia Vegetal, Myrtaceae; além disso me interesso por Ensino de Ciências, formação de professores, metodologias ativas e aprendizagem significativa.",
   },
 ];
 
@@ -32,7 +25,7 @@ const IdealizersPage = () => {
               <div className="flex flex-col md:flex-row">
                 <div className="flex-shrink-0 p-6 flex items-center justify-center md:w-1/3 bg-muted/40">
                   <Avatar className="h-32 w-32 border-4 border-primary/20">
-                    <AvatarImage src={person.avatar} alt={person.name} loading="lazy" /> {/* Added lazy loading */}
+                    <AvatarImage src={person.avatar} alt={person.name} loading="lazy" />
                     <AvatarFallback className="text-4xl">{person.fallback}</AvatarFallback>
                   </Avatar>
                 </div>
