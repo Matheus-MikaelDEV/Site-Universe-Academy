@@ -39,6 +39,13 @@ const idealizers = [
     fallback: "MV",
     bio: "Meu nome é Marcos Vinnicios, nasci em 2008 e atualmente curso o segundo ano do ensino médio integrado ao curso técnico em Informática. Tenho grande interesse por novas tecnologias e gosto muito de aprender sobre astronomia e psicologia.\n\nMeu objetivo atualmente é seguir carreira como programador. Pretendo começar a estudar e praticar linguagens como HTML, CSS, JavaScript, Python e C, sempre buscando evoluir minhas habilidades e ampliar meus conhecimentos.\n\nAcredito que o futuro é construído com dedicação e boas escolhas, e por isso quero me tornar uma pessoa bem-sucedida que consiga gerar impactos positivos para o mundo.",
   },
+  {
+    name: "Salomuel",
+    role: "Estudante de Ensino Médio e Técnico em Informática",
+    avatar: "/salomuel.png",
+    fallback: "SA",
+    bio: "Meu nome é Salomuel, nasci em 2008 e curso a segunda série do Ensino Médio junto ao Técnico em Informática. Tenho como principais áreas de estudo o desenvolvimento em Java e a criação de jogos digitais com GameMaker Language (GML). Além disso, possuo familiaridade com linguagens como HTML, CSS, JavaScript, Python e C, que ampliam minhas possibilidades na programação.\n\nMinha jornada na área não é apenas sobre aprender códigos, mas sobre explorar formas de criar soluções e experiências interativas. Ao trabalhar com jogos e sistemas, encontro uma maneira de unir lógica e criatividade, transformando ideias em projetos reais.\n\nFui selecionado para participar da 5ª Semana Nacional da Educação Profissional e Tecnológica, em Brasília, evento que mostrou a importância da educação técnica no desenvolvimento do país. Essa experiência reforçou meu desejo de continuar aprendendo e aplicando meus conhecimentos de forma prática.\n\nTambém colaboro na construção da UniVerse Academy, uma plataforma de cursos gratuitos voltada para fortalecer a educação brasileira. Esse projeto me inspira a seguir evoluindo e a usar a tecnologia como meio de gerar impacto positivo.",
+  },
 ];
 
 const IdealizersPage = () => {
