@@ -9,7 +9,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 import { AdminLayout } from "./components/admin/AdminLayout";
-import { Skeleton } from "./components/ui/skeleton"; // Import Skeleton for fallback
+import { Skeleton } from "./components/ui/skeleton";
+import ErrorBoundary from "./components/ErrorBoundary"; // Import ErrorBoundary
 
 // Lazy load page components
 const Index = lazy(() => import("./pages/Index"));
@@ -23,11 +24,15 @@ const IdealizersPage = lazy(() => import("./pages/IdealizersPage"));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage")); // New
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage")); // New
+const CertificateViewerPage = lazy(() => import("./pages/CertificateViewerPage")); // New
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 const AdminCoursesPage = lazy(() => import("./pages/admin/AdminCoursesPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminFeedbackPage = lazy(() => import("./pages/admin/AdminFeedbackPage"));
 const AdminManageCourseContentPage = lazy(() => import("./pages/admin/AdminManageCourseContentPage"));
+const AdminSendNotificationPage = lazy(() => import("./pages/admin/AdminSendNotificationPage")); // New
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -40,47 +45,53 @@ const App = () => (
           <AuthProvider>
             <Toaster />
             <Sonner />
-            <Suspense fallback={
-              <div className="flex flex-col min-h-screen">
-                <div className="flex-grow container py-12 space-y-8">
-                  <Skeleton className="h-10 w-1/3" />
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-40 w-full" />
+            <ErrorBoundary> {/* Wrap the entire app with ErrorBoundary */}
+              <Suspense fallback={
+                <div className="flex flex-col min-h-screen">
+                  <div className="flex-grow container py-12 space-y-8">
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-40 w-full" />
+                  </div>
                 </div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
-                <Route path="/cursos" element={<CoursesPage />} />
-                <Route path="/cursos/:id" element={<CourseDetailPage />} />
-                <Route path="/sobre" element={<AboutPage />} />
-                <Route path="/idealizadores" element={<IdealizersPage />} />
-                <Route path="/feedback" element={<FeedbackPage />} />
-                
-                {/* Protected Routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/perfil" element={<ProfilePage />} />
-                </Route>
-
-                {/* Admin Routes */}
-                <Route element={<AdminRoute />}>
-                  <Route path="/admin" element={<AdminLayout />}>
-                    <Route path="dashboard" element={<AdminDashboardPage />} />
-                    <Route path="courses" element={<AdminCoursesPage />} />
-                    <Route path="courses/:courseId/manage" element={<AdminManageCourseContentPage />} />
-                    <Route path="users" element={<AdminUsersPage />} />
-                    <Route path="feedback" element={<AdminFeedbackPage />} />
+              }>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
+                  <Route path="/cursos" element={<CoursesPage />} />
+                  <Route path="/cursos/:id" element={<CourseDetailPage />} />
+                  <Route path="/sobre" element={<AboutPage />} />
+                  <Route path="/idealizadores" element={<IdealizersPage />} />
+                  <Route path="/feedback" element={<FeedbackPage />} />
+                  <Route path="/leaderboard" element={<LeaderboardPage />} /> {/* New Public Route */}
+                  <Route path="/certificado/:certificateId" element={<CertificateViewerPage />} /> {/* New Public Route */}
+                  
+                  {/* Protected Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/perfil" element={<ProfilePage />} />
+                    <Route path="/notificacoes" element={<NotificationsPage />} /> {/* New Protected Route */}
                   </Route>
-                </Route>
 
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+                  {/* Admin Routes */}
+                  <Route element={<AdminRoute />}>
+                    <Route path="/admin" element={<AdminLayout />}>
+                      <Route path="dashboard" element={<AdminDashboardPage />} />
+                      <Route path="courses" element={<AdminCoursesPage />} />
+                      <Route path="courses/:courseId/manage" element={<AdminManageCourseContentPage />} />
+                      <Route path="users" element={<AdminUsersPage />} />
+                      <Route path="feedback" element={<AdminFeedbackPage />} />
+                      <Route path="send-notification" element={<AdminSendNotificationPage />} /> {/* New Admin Route */}
+                    </Route>
+                  </Route>
+
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

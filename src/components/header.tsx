@@ -1,4 +1,4 @@
-import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut, Shield } from "lucide-react";
+import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut, Shield, Award } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { showSuccess } from "@/utils/toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { NotificationBell } from "./NotificationBell"; // Import NotificationBell
+import { NotificationBell } from "./NotificationBell";
 
 export const Header = () => {
   const { user, session, isAdmin, profile } = useAuth();
@@ -25,6 +25,7 @@ export const Header = () => {
     { href: "/sobre", label: "Sobre" },
     { href: "/idealizadores", label: "Idealizadores" },
     { href: "/feedback", label: "Feedback" },
+    { href: "/leaderboard", label: "Leaderboard" }, // New link
   ];
 
   const getInitials = (email: string) => {
@@ -78,6 +79,37 @@ export const Header = () => {
                       {link.label}
                     </Link>
                   ))}
+                  {session && user && (
+                    <>
+                      <Link to="/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
+                        Painel
+                      </Link>
+                      <Link to="/perfil" className="transition-colors hover:text-foreground/80 text-foreground/60">
+                        Meu Perfil
+                      </Link>
+                      <Link to="/notificacoes" className="transition-colors hover:text-foreground/80 text-foreground/60">
+                        Notificações
+                      </Link>
+                      {isAdmin && (
+                        <Link to="/admin/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
+                          Admin
+                        </Link>
+                      )}
+                      <Button variant="ghost" onClick={handleLogout} className="justify-start px-0">
+                        Sair
+                      </Button>
+                    </>
+                  )}
+                  {!session && (
+                    <>
+                      <Button variant="ghost" onClick={() => navigate("/login")} className="justify-start px-0">
+                        Login
+                      </Button>
+                      <Button onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-primary-foreground justify-start px-0">
+                        Cadastre-se
+                      </Button>
+                    </>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -87,7 +119,7 @@ export const Header = () => {
             <ThemeToggle />
             {session && user ? (
               <>
-                <NotificationBell /> {/* Add NotificationBell here */}
+                <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -112,6 +144,10 @@ export const Header = () => {
                     <DropdownMenuItem onClick={() => navigate("/perfil")}>
                       <UserIcon className="mr-2 h-4 w-4" />
                       <span>Meu Perfil</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/notificacoes")}>
+                      <BellRing className="mr-2 h-4 w-4" />
+                      <span>Notificações</span>
                     </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>

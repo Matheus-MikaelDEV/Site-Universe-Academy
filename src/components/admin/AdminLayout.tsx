@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookCopy, Home, MessageSquare, Users, Shield } from "lucide-react";
+import { BookCopy, Home, MessageSquare, Users, Shield, BellRing } from "lucide-react";
 import { Header } from "../header";
 
 export function AdminLayout() {
@@ -29,6 +29,10 @@ export function AdminLayout() {
           <AdminNavLink to="/admin/feedback">
             <MessageSquare className="h-4 w-4" />
             Feedbacks
+          </AdminNavLink>
+          <AdminNavLink to="/admin/send-notification">
+            <BellRing className="h-4 w-4" />
+            Enviar Notificação
           </AdminNavLink>
         </nav>
       </aside>

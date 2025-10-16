@@ -6,11 +6,16 @@ import { Footer } from "@/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { BookCheck, CheckCircle, Link as LinkIcon, FileText, Youtube } from "lucide-react";
+import { BookCheck, CheckCircle, Link as LinkIcon, FileText, Youtube, CheckSquare, Square } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { showError, showSuccess } from "@/utils/toast";
 import { Course } from "@/types/course";
 import { Module } from "@/types/module";
+import { ModuleQuiz } from "@/components/ModuleQuiz"; // Import ModuleQuiz
+
+interface ModuleWithProgress extends Module {
+  is_completed: boolean;
+}
 
 const CourseDetailPage = () => {
   const { id: courseId } = useParams();
@@ -18,43 +23,66 @@ const CourseDetailPage = () => {
   const navigate = useNavigate();
 
   const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
+  const [modules, setModules] = useState<ModuleWithProgress[]>([]);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [courseCompletionPercentage, setCourseCompletionPercentage] = useState(0);
 
-  useEffect(() => {
-    const fetchCourseData = async () => {
-      if (!courseId) return;
-      setLoading(true);
+  const fetchCourseData = async () => {
+    if (!courseId) return;
+    setLoading(true);
 
-      // Fetch course details
-      const { data: courseData, error: courseError } = await supabase
-        .from("courses").select("*").eq("id", courseId).single();
+    // Fetch course details
+    const { data: courseData, error: courseError } = await supabase
+      .from("courses").select("*").eq("id", courseId).single();
+    
+    if (courseError) console.error("Error fetching course:", courseError);
+    else setCourse(courseData);
+
+    // Check enrollment status if user is logged in
+    if (user) {
+      const { data: enrollmentData, error: enrollmentError } = await supabase
+        .from("course_enrollments")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("course_id", courseId)
+        .single();
       
-      if (courseError) console.error("Error fetching course:", courseError);
-      else setCourse(courseData);
-
-      // Check enrollment status if user is logged in
-      if (user) {
-        const { data: enrollmentData, error: enrollmentError } = await supabase
-          .from("course_enrollments")
-          .select("id")
-          .eq("user_id", user.id)
+      if (enrollmentData) {
+        setIsEnrolled(true);
+        // Fetch modules and their completion status if enrolled
+        const { data: modulesData, error: modulesError } = await supabase
+          .from("modules")
+          .select(`
+            *,
+            course_progress(is_completed)
+          `)
           .eq("course_id", courseId)
-          .single();
+          .order("module_order");
         
-        if (enrollmentData) {
-          setIsEnrolled(true);
-          // Fetch modules if enrolled
-          const { data: modulesData, error: modulesError } = await supabase
-            .from("modules").select("*").eq("course_id", courseId).order("module_order");
-          if (modulesError) console.error("Error fetching modules:", modulesError);
-          else setModules(modulesData);
+        if (modulesError) {
+          console.error("Error fetching modules:", modulesError);
+        } else {
+          const modulesWithProgress = modulesData.map(m => ({
+            ...m,
+            is_completed: m.course_progress.length > 0 ? m.course_progress[0].is_completed : false
+          }));
+          setModules(modulesWithProgress);
+
+          const completedCount = modulesWithProgress.filter(m => m.is_completed).length;
+          const totalCount = modulesWithProgress.length;
+          if (totalCount > 0) {
+            setCourseCompletionPercentage(Math.round((completedCount / totalCount) * 100));
+          } else {
+            setCourseCompletionPercentage(0);
+          }
         }
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchCourseData();
   }, [courseId, user]);
 
@@ -72,11 +100,37 @@ const CourseDetailPage = () => {
     } else {
       showSuccess("Inscrição realizada com sucesso!");
       setIsEnrolled(true);
-      // Re-fetch modules after enrollment
-      const { data: modulesData } = await supabase
-        .from("modules").select("*").eq("course_id", courseId!).order("module_order");
-      setModules(modulesData || []);
+      fetchCourseData(); // Re-fetch data to show modules
     }
+  };
+
+  const handleMarkModuleComplete = async (moduleId: string, isCompleted: boolean) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("course_progress")
+      .upsert(
+        {
+          user_id: user.id,
+          module_id: moduleId,
+          is_completed: !isCompleted,
+          completed_at: !isCompleted ? new Date().toISOString() : null,
+        },
+        { onConflict: "user_id,module_id" }
+      );
+
+    if (error) {
+      showError("Erro ao atualizar progresso: " + error.message);
+    } else {
+      showSuccess(!isCompleted ? "Módulo marcado como concluído!" : "Módulo marcado como não concluído.");
+      fetchCourseData(); // Re-fetch to update progress
+    }
+  };
+
+  const handleQuizComplete = (score: number, total: number) => {
+    showSuccess(`Quiz concluído! Você acertou ${score} de ${total} perguntas.`);
+    // Optionally, mark module as complete if quiz passed
+    // This logic can be added here or in a Supabase trigger
   };
 
   return (
@@ -104,13 +158,18 @@ const CourseDetailPage = () => {
                   src={course.image_url || '/placeholder.svg'} 
                   alt={course.title} 
                   className="rounded-lg shadow-lg mb-4 w-full object-cover" 
-                  loading="lazy" // Added lazy loading
+                  loading="lazy"
                 />
                 {isEnrolled ? (
-                  <Button size="lg" className="w-full" disabled>
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Você está inscrito
-                  </Button>
+                  <>
+                    <Button size="lg" className="w-full mb-2" disabled>
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Você está inscrito
+                    </Button>
+                    <div className="text-center text-sm text-muted-foreground">
+                      Progresso do Curso: {courseCompletionPercentage}%
+                    </div>
+                  </>
                 ) : (
                   <Button size="lg" className="w-full" onClick={handleEnroll}>
                     <BookCheck className="mr-2 h-5 w-5" />
@@ -126,7 +185,16 @@ const CourseDetailPage = () => {
                   <Accordion type="single" collapsible className="w-full">
                     {modules.map(module => (
                       <AccordionItem value={module.id} key={module.id}>
-                        <AccordionTrigger className="text-xl">{module.title}</AccordionTrigger>
+                        <AccordionTrigger className="text-xl flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {module.is_completed ? (
+                              <CheckSquare className="h-5 w-5 text-green-500" />
+                            ) : (
+                              <Square className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            {module.title}
+                          </div>
+                        </AccordionTrigger>
                         <AccordionContent className="p-4 space-y-4">
                           <p className="text-muted-foreground">{module.description}</p>
                           <div className="flex flex-wrap gap-4">
@@ -140,6 +208,24 @@ const CourseDetailPage = () => {
                                 <Button variant="outline"><FileText className="mr-2 h-4 w-4" /> Baixar PDF</Button>
                               </a>
                             )}
+                            <Button
+                              variant={module.is_completed ? "secondary" : "outline"}
+                              onClick={() => handleMarkModuleComplete(module.id, module.is_completed)}
+                            >
+                              {module.is_completed ? (
+                                <>
+                                  <CheckCircle className="mr-2 h-4 w-4" /> Concluído
+                                </>
+                              ) : (
+                                <>
+                                  <Square className="mr-2 h-4 w-4" /> Marcar como Concluído
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          {/* Quiz Section */}
+                          <div className="mt-6">
+                            <ModuleQuiz moduleId={module.id} onQuizComplete={handleQuizComplete} />
                           </div>
                         </AccordionContent>
                       </AccordionItem>

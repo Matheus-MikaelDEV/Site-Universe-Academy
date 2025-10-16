@@ -4,6 +4,9 @@ import { CourseCard } from "@/components/course-card";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search } from "lucide-react";
 
 interface Course {
   id: string;
@@ -16,26 +19,79 @@ interface Course {
 const CoursesPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      const { data, error } = await supabase.from("courses").select("*");
+    const fetchCoursesAndCategories = async () => {
+      setLoading(true);
+      let query = supabase.from("courses").select("*");
+
+      if (selectedCategory !== "all") {
+        query = query.eq("category", selectedCategory);
+      }
+      if (searchTerm) {
+        query = query.ilike("title", `%${searchTerm}%`);
+      }
+
+      const { data, error } = await query.order("title", { ascending: true });
       if (error) {
         console.error("Error fetching courses:", error);
       } else {
         setCourses(data as Course[]);
       }
+
+      // Fetch unique categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("courses")
+        .select("category")
+        .not("category", "is", null);
+      
+      if (categoriesError) {
+        console.error("Error fetching categories:", categoriesError);
+      } else {
+        const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category)));
+        setCategories(uniqueCategories as string[]);
+      }
       setLoading(false);
     };
 
-    fetchCourses();
-  }, []);
+    fetchCoursesAndCategories();
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow container py-12">
         <h1 className="text-4xl font-bold text-center mb-10">Nossos Cursos</h1>
+        
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 max-w-2xl mx-auto">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Buscar cursos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filtrar por Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Categorias</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
@@ -48,7 +104,7 @@ const CoursesPage = () => {
               </div>
             ))}
           </div>
-        ) : (
+        ) : courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {courses.map((course) => (
               <CourseCard
@@ -61,6 +117,8 @@ const CoursesPage = () => {
               />
             ))}
           </div>
+        ) : (
+          <p className="text-center text-muted-foreground text-lg">Nenhum curso encontrado com os critérios selecionados.</p>
         )}
       </main>
       <Footer />

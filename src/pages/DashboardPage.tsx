@@ -3,23 +3,72 @@ import { Footer } from "@/components/footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
-import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserBadges } from "@/components/UserBadges"; // Import UserBadges
+import { UserBadges } from "@/components/UserBadges";
+import { Award, FileText } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { showError } from "@/utils/toast";
+
+interface Certificate {
+  id: string;
+  created_at: string;
+  course_enrollments: {
+    courses: {
+      title: string;
+    };
+  };
+}
 
 const DashboardPage = () => {
   const { user, profile, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [certificatesLoading, setCertificatesLoading] = useState(true);
 
   useEffect(() => {
-    // If the user is determined to be an admin, redirect them immediately.
     if (!loading && isAdmin) {
       navigate("/admin/dashboard", { replace: true });
     }
   }, [isAdmin, loading, navigate]);
 
-  // While checking the user's role or redirecting, show a loading state.
+  useEffect(() => {
+    const fetchCertificates = async () => {
+      if (!user) {
+        setCertificatesLoading(false);
+        return;
+      }
+      setCertificatesLoading(true);
+      const { data, error } = await supabase
+        .from("certificates")
+        .select(
+          `
+          id,
+          created_at,
+          course_enrollments (
+            courses (
+              title
+            )
+          )
+        `
+        )
+        .eq("course_enrollments.user_id", user.id); // Filter by user_id in enrollment
+
+      if (error) {
+        showError("Erro ao carregar certificados: " + error.message);
+        console.error("Error fetching certificates:", error);
+      } else {
+        setCertificates(data || []);
+      }
+      setCertificatesLoading(false);
+    };
+
+    if (!loading && user) {
+      fetchCertificates();
+    }
+  }, [user, loading]);
+
   if (loading || isAdmin) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -55,24 +104,62 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <UserBadges /> {/* Add UserBadges component here */}
-
         <Card>
           <CardHeader>
-            <CardTitle>Meus Cursos Concluídos</CardTitle>
-            <CardDescription>
-              Aqui você pode ver os cursos que completou e gerar seus certificados.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-blue-500" />
+              Minha Pontuação
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Placeholder: Logic to fetch and display completed courses will go here */}
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Você ainda não concluiu nenhum curso.</p>
-              <Badge variant="outline" className="mt-2">Em breve</Badge>
-            </div>
+            <p className="text-2xl font-bold text-primary">{profile?.points || 0} pontos</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Continue aprendendo para ganhar mais pontos e subir no{" "}
+              <Link to="/leaderboard" className="text-primary hover:underline">
+                Leaderboard
+              </Link>
+              !
+            </p>
           </CardContent>
         </Card>
 
+        <UserBadges />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus Certificados</CardTitle>
+            <CardDescription>
+              Aqui você pode ver e baixar os certificados dos cursos que concluiu.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {certificatesLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : certificates.length > 0 ? (
+              <div className="space-y-2">
+                {certificates.map((cert) => (
+                  <div key={cert.id} className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <p className="font-medium">{cert.course_enrollments?.courses?.title || "Curso Desconhecido"}</p>
+                    </div>
+                    <Link to={`/certificado/${cert.id}`}>
+                      <Button variant="outline" size="sm">Ver Certificado</Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Você ainda não possui nenhum certificado.</p>
+                <Badge variant="outline" className="mt-2">Conclua um curso para ganhar!</Badge>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
       <Footer />
     </div>
