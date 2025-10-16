@@ -32,6 +32,13 @@ const idealizers = [
     fallback: "ET",
     bio: "Nasci em 03 de março de 2009 e atualmente curso o 2º ano do Ensino Médio integrado ao Técnico em Informática. Desde cedo, desenvolvi uma forte paixão pela escrita, pelo desenho e pelas artes em geral, áreas nas quais encontro a melhor forma de expressar minha criatividade e identidade.\n\nNo projeto em desenvolvimento, sou responsável pela parte visual, atuando diretamente na elaboração da capa e na criação das ilustrações que representam o trabalho. Minha intenção é unir estética, originalidade e clareza para que cada elemento visual complemente a proposta do grupo, tornando-a mais envolvente e atrativa. Tenho familiaridade com desenhos digitais, pintura e diferentes formas de arte, além de facilidade em escrita e comunicação. Dialogar, ouvir e compreender diferentes perspectivas são características que me permitem colaborar de forma ativa e construtiva. Possuo também facilidade em resolver problemas e assumir papéis de liderança, exercendo de maneira natural a organização e o comando das atividades em grupo.",
   },
+  {
+    name: "Marcos Vinnicios",
+    role: "Estudante de Ensino Médio e Técnico em Informática",
+    avatar: "/marcos-vinnicios.jpg",
+    fallback: "MV",
+    bio: "Meu nome é Marcos Vinnicios, nasci em 2008 e atualmente curso o segundo ano do ensino médio integrado ao curso técnico em Informática. Tenho grande interesse por novas tecnologias e gosto muito de aprender sobre astronomia e psicologia.\n\nMeu objetivo atualmente é seguir carreira como programador. Pretendo começar a estudar e praticar linguagens como HTML, CSS, JavaScript, Python e C, sempre buscando evoluir minhas habilidades e ampliar meus conhecimentos.\n\nAcredito que o futuro é construído com dedicação e boas escolhas, e por isso quero me tornar uma pessoa bem-sucedida que consiga gerar impactos positivos para o mundo.",
+  },
 ];
 
 const IdealizersPage = () => {
