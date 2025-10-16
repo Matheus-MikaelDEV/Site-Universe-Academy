@@ -45,26 +45,34 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        console.log("Fetching user count...");
         const { count: userCount, error: userCountError } = await supabase
           .from("profiles")
           .select("*", { count: "exact", head: true });
         if (userCountError) throw userCountError;
+        console.log("User count:", userCount);
 
+        console.log("Fetching course count...");
         const { count: courseCount, error: courseCountError } = await supabase
           .from("courses")
           .select("*", { count: "exact", head: true });
         if (courseCountError) throw courseCountError;
+        console.log("Course count:", courseCount);
 
+        console.log("Fetching feedback data...");
         const { data: feedbackData, count: feedbackCount, error: feedbackError } = await supabase
           .from("feedbacks")
           .select("*", { count: "exact" })
           .order("created_at", { ascending: false })
           .limit(5);
         if (feedbackError) throw feedbackError;
+        console.log("Feedback data:", feedbackData, "Feedback count:", feedbackCount);
 
+        console.log("Fetching monthly signups...");
         const { data: signupsData, error: signupsError } = await supabase
           .rpc('get_monthly_signups');
         if (signupsError) throw signupsError;
+        console.log("Monthly signups data:", signupsData);
 
         setStats({
           users: userCount ?? 0,
