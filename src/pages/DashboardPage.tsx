@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 const DashboardPage = () => {
-  const { user, profile } a= useAuth();
+  const { user, profile } = useAuth();
 
   return (
     <div className="flex flex-col min-h-screen">
