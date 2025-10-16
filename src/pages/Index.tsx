@@ -5,6 +5,7 @@ import { CourseCard } from "@/components/course-card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 interface Course {
   id: string;
@@ -17,6 +18,7 @@ interface Course {
 const Index = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -47,7 +49,11 @@ const Index = () => {
               Cursos online inovadores para professores e educadores que buscam
               transformar o aprendizado.
             </p>
-            <Button size="lg" className="bg-gradient-to-r from-primary to-purple-600 text-primary-foreground font-bold text-lg px-8 py-6 transition-transform duration-300 hover:scale-105">
+            <Button 
+              size="lg" 
+              className="bg-primary text-primary-foreground font-bold text-lg px-8 py-6 transition-transform duration-300 hover:scale-105"
+              onClick={() => navigate('/cursos')}
+            >
               Explorar Cursos
             </Button>
           </div>
