@@ -11,6 +11,13 @@ const idealizers = [
     fallback: "PS",
     bio: "O Professor Dr. Plauto Simão de Carvalho é Licenciado em Biologia (2004) pela Universidade Estadual de Goiás (UEG) com formação em coleta e estudos botânicos da flora do Cerrado, técnicas de herbário, e Anatomia Vegetal; Especialista em Biologia Vegetal (2006) pela Universidade Estadual de Goiás (UEG) com enfoque em estudos fitossociológicos e comunidades de plantas lenhosas de cerrado sentido restrito; Mestre em Botânica (2008) pela Universidade de Brasília (UnB) com enfoque em taxonomia de Myrtaceae, Doutor em Ecologia (2013) pela Universidade de Brasília (UnB) e Doutorado Sanduíche (2012) pela University of Oxford e Royal Botanic Gardens (Kew) com enfoque em ecologia de populações, sistemática filogenética e biogeografia de plantas da família Myrtaceae. Atualmente sou professor titular da Universidade Estadual de Goiás (UEG), atuo na graduação para os cursos de Biologia e Agronomia, sou membro permanente do PPG Ensino de Ciências - PPEC/UEG (2007-atual), coordenei o PPEC entre 2019-2024, atualmente sou vice-coordenador (2024-atual), com enfoque na formação de formação de professores, Metodologias Ativas de Ensino e Aprendizagem Significativa, coordenei Pibid Biologia/UEG entre 2006-2009, retomando como coordenador de área do Pibid/Biologia UEG Palmeiras de Goiás. Meus interesses são estudos de biodiversidade e ecologia do Cerrado, flora de Angiospermas e Sistemática Filogenética, Anatomia Vegetal, Myrtaceae; além disso me interesso por Ensino de Ciências, formação de professores, metodologias ativas e aprendizagem significativa.",
   },
+  {
+    name: "Welliton Correia Vale",
+    role: "Licenciado em Química e Professor da Rede Estadual de Educação de Goiás",
+    avatar: "/welintonvale.png",
+    fallback: "WV",
+    bio: "Licenciado em Química e professor da Rede Estadual de Educação de Goiás e discente do Programa de Pós-Graduação Stricto Sensu – Mestrado Profissional em Ensino de Ciências da Universidade Estadual de Goiás (UEG). Este espaço foi criado com o propósito de contribuir para a formação continuada de professores de Ciências da Natureza e Ciências da Natureza e suas Tecnologias, oferecendo conteúdos, reflexões e práticas pedagógicas que dialogam com os desafios do ensino contemporâneo. O site tem caráter de Produto Educacional, constituindo-se como um ambiente de apoio e atualização, voltado para ampliar horizontes, compartilhar experiências e fortalecer a atuação docente. Aqui, você encontrará materiais e recursos pensados para potencializar o trabalho em sala de aula, promovendo aprendizagens significativas e estimulando o protagonismo do professor como agente transformador da educação.",
+  },
 ];
 
 const IdealizersPage = () => {
