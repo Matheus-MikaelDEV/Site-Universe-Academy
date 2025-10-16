@@ -24,6 +24,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminCoursesPage from "./pages/admin/AdminCoursesPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminFeedbackPage from "./pages/admin/AdminFeedbackPage";
+import AdminManageCourseContentPage from "./pages/admin/AdminManageCourseContentPage";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route path="dashboard" element={<AdminDashboardPage />} />
                   <Route path="courses" element={<AdminCoursesPage />} />
+                  <Route path="courses/:courseId/manage" element={<AdminManageCourseContentPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="feedback" element={<AdminFeedbackPage />} />
                 </Route>
