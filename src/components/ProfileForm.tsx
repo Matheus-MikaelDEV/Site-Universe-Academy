@@ -144,7 +144,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
             <FormItem>
               <FormLabel>CPF</FormLabel>
               <FormControl>
-                <Input placeholder="000.000.000-00" {...field} />
+                <Input placeholder="000.000.000-00" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
