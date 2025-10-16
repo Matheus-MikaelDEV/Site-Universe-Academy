@@ -1,12 +1,24 @@
-import { Menu, BookOpen } from "lucide-react";
+import { Menu, BookOpen, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import { showSuccess } from "@/utils/toast";
 
 export const Header = () => {
+  const { user, session } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    showSuccess("Você saiu com sucesso.");
+    navigate("/");
+  };
+
   const navLinks = [
-    { href: "#", label: "Cursos" },
+    { href: "/cursos", label: "Cursos" },
     { href: "#", label: "Sobre" },
     { href: "#", label: "Idealizadores" },
     { href: "#", label: "Feedback" },
@@ -66,10 +78,26 @@ export const Header = () => {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost">Login</Button>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Cadastre-se
-            </Button>
+            {session ? (
+              <>
+                <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Painel
+                </Button>
+                <Button variant="ghost" onClick={handleLogout}>
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate("/login")}>
+                  Login
+                </Button>
+                <Button onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  Cadastre-se
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

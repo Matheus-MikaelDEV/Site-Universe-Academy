@@ -2,28 +2,36 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CourseCard } from "@/components/course-card";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface Course {
+  id: string;
+  title: string;
+  category: string;
+  instructor: string;
+  image_url: string;
+}
 
 const Index = () => {
-  const courses = [
-    {
-      title: "Design Thinking para Educadores",
-      category: "Inovação",
-      instructor: "Ana Clara",
-      imageUrl: "/placeholder.svg",
-    },
-    {
-      title: "Tecnologias na Sala de Aula",
-      category: "Tecnologia",
-      instructor: "Marcos Paulo",
-      imageUrl: "/placeholder.svg",
-    },
-    {
-      title: "Gestão de Projetos Educacionais",
-      category: "Gestão",
-      instructor: "Sofia Lima",
-      imageUrl: "/placeholder.svg",
-    },
-  ];
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      // Fetch 3 courses for the homepage
+      const { data, error } = await supabase.from("courses").select("*").limit(3);
+      if (error) {
+        console.error("Error fetching courses:", error);
+      } else {
+        setCourses(data as Course[]);
+      }
+      setLoading(false);
+    };
+
+    fetchCourses();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -51,11 +59,31 @@ const Index = () => {
             <h2 className="text-3xl font-bold text-center mb-10">
               Cursos Populares
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {courses.map((course) => (
-                <CourseCard key={course.title} {...course} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-3">
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {courses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    title={course.title}
+                    category={course.category}
+                    instructor={course.instructor}
+                    imageUrl={course.image_url}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>
