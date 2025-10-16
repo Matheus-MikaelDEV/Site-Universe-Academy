@@ -82,6 +82,7 @@ const Index = () => {
                 {courses.map((course) => (
                   <CourseCard
                     key={course.id}
+                    id={course.id}
                     title={course.title}
                     category={course.category}
                     instructor={course.instructor}

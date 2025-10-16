@@ -19,9 +19,9 @@ export const Header = () => {
 
   const navLinks = [
     { href: "/cursos", label: "Cursos" },
-    { href: "#", label: "Sobre" },
-    { href: "#", label: "Idealizadores" },
-    { href: "#", label: "Feedback" },
+    { href: "/sobre", label: "Sobre" },
+    { href: "/idealizadores", label: "Idealizadores" },
+    { href: "/feedback", label: "Feedback" },
   ];
 
   return (

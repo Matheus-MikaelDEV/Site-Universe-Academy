@@ -12,6 +12,11 @@ import RegisterPage from "./pages/RegisterPage";
 import CoursesPage from "./pages/CoursesPage";
 import DashboardPage from "./pages/DashboardPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import CourseDetailPage from "./pages/CourseDetailPage";
+import AboutPage from "./pages/AboutPage";
+import IdealizersPage from "./pages/IdealizersPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +32,12 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
               <Route path="/cursos" element={<CoursesPage />} />
+              <Route path="/cursos/:id" element={<CourseDetailPage />} />
+              <Route path="/sobre" element={<AboutPage />} />
+              <Route path="/idealizadores" element={<IdealizersPage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
               
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>

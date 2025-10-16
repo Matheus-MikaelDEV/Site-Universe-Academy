@@ -38,7 +38,7 @@ const CoursesPage = () => {
         <h1 className="text-4xl font-bold text-center mb-10">Nossos Cursos</h1>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(3)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
               <div key={i} className="flex flex-col space-y-3">
                 <Skeleton className="h-[200px] w-full rounded-xl" />
                 <div className="space-y-2">
@@ -53,6 +53,7 @@ const CoursesPage = () => {
             {courses.map((course) => (
               <CourseCard
                 key={course.id}
+                id={course.id}
                 title={course.title}
                 category={course.category}
                 instructor={course.instructor}

@@ -17,6 +17,11 @@ const LoginPage = () => {
               Cadastre-se
             </Link>
           </p>
+          <p className="mt-2">
+            <Link to="/recuperar-senha" className="text-xs text-muted-foreground hover:underline">
+              Esqueceu sua senha?
+            </Link>
+          </p>
         </div>
       </div>
     </div>
