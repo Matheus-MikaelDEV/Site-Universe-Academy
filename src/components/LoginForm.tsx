@@ -31,16 +31,32 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
     });
 
     if (error) {
       showError(error.message);
-    } else {
-      showSuccess("Login realizado com sucesso!");
-      navigate("/dashboard");
+    } else if (data.user) {
+      // Check user role for redirection
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError) {
+        showError("Não foi possível verificar seu perfil. Redirecionando para o painel padrão.");
+        navigate("/dashboard");
+      } else {
+        showSuccess("Login realizado com sucesso!");
+        if (profileData?.role === 'admin') {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
+      }
     }
   }
 
