@@ -7,7 +7,7 @@ import { Profile } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MoreHorizontal, Pencil, LockReset } from "lucide-react";
+import { MoreHorizontal, Pencil, RotateCcw } from "lucide-react"; // Alterado de LockReset para RotateCcw
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
                           </DropdownMenuItem>
                           {user.email && ( // Only show if email is available for reset
                             <DropdownMenuItem onClick={() => handleResetPassword(user.id, user.email!)}>
-                              <LockReset className="mr-2 h-4 w-4" /> Redefinir Senha
+                              <RotateCcw className="mr-2 h-4 w-4" /> Redefinir Senha {/* Alterado aqui */}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
