@@ -27,19 +27,18 @@ const CoursesPage = () => {
   useEffect(() => {
     const fetchCoursesAndCategories = async () => {
       setLoading(true);
-      console.log("Iniciando busca de cursos...");
+      console.log("Iniciando busca de cursos e categorias...");
 
       try {
-        console.log("Tentando buscar cursos com consulta simples...");
+        console.log("Tentando buscar cursos...");
         const { data: coursesData, error: coursesError } = await supabase.from("courses").select("id, title, category, instructor, image_url").order("title", { ascending: true });
         
-        console.log("Supabase courses response - data:", coursesData, "error:", coursesError);
-
         if (coursesError) {
           console.error("Erro ao buscar cursos do Supabase:", coursesError);
           showError("Falha ao carregar cursos: " + coursesError.message);
           setCourses([]);
         } else {
+          console.log("Cursos carregados:", coursesData);
           setCourses(coursesData as Course[]);
         }
 
@@ -49,12 +48,12 @@ const CoursesPage = () => {
           .select("category")
           .not("category", "is", null);
         
-        console.log("Supabase categories response - data:", categoriesData, "error:", categoriesError);
-
         if (categoriesError) {
           console.error("Erro ao buscar categorias do Supabase:", categoriesError);
         } else {
+          console.log("Dados brutos de categorias:", categoriesData);
           const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category))).filter(Boolean); // Filter out null/undefined categories
+          console.log("Categorias únicas processadas:", uniqueCategories);
           setCategories(uniqueCategories as string[]);
         }
       } catch (e: any) {
