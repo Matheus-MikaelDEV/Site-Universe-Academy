@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { showError } from "@/utils/toast"; // Import showError
 
 interface Course {
   id: string;
@@ -26,6 +27,7 @@ const CoursesPage = () => {
   useEffect(() => {
     const fetchCoursesAndCategories = async () => {
       setLoading(true);
+      console.log("Iniciando busca de cursos..."); // Log de início
       let query = supabase.from("courses").select("*");
 
       if (selectedCategory !== "all") {
@@ -37,8 +39,10 @@ const CoursesPage = () => {
 
       const { data, error } = await query.order("title", { ascending: true });
       if (error) {
-        console.error("Error fetching courses:", error);
+        console.error("Erro ao buscar cursos:", error);
+        showError("Falha ao carregar cursos: " + error.message); // Exibe erro para o usuário
       } else {
+        console.log("Dados de cursos recebidos:", data); // Log dos dados recebidos
         setCourses(data as Course[]);
       }
 
@@ -49,12 +53,13 @@ const CoursesPage = () => {
         .not("category", "is", null);
       
       if (categoriesError) {
-        console.error("Error fetching categories:", categoriesError);
+        console.error("Erro ao buscar categorias:", categoriesError);
       } else {
         const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category)));
         setCategories(uniqueCategories as string[]);
       }
       setLoading(false);
+      console.log("Busca de cursos finalizada. Loading set to false."); // Log de fim
     };
 
     fetchCoursesAndCategories();
