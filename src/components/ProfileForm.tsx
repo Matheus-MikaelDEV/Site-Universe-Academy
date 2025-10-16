@@ -15,7 +15,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   fullName: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
@@ -27,16 +28,24 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.user_metadata.avatar_url || null);
+  const { profile } = useAuth();
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: user.user_metadata.full_name || "",
+      fullName: "",
       avatarFile: undefined,
     },
   });
+
+  useEffect(() => {
+    if (profile) {
+      form.setValue("fullName", profile.full_name || "");
+      setAvatarPreview(profile.avatar_url || null);
+    }
+  }, [profile, form]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,7 +58,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      let avatarUrl = user.user_metadata.avatar_url;
+      let avatarUrl = profile?.avatar_url;
 
       if (values.avatarFile) {
         const file = values.avatarFile;
@@ -58,7 +67,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, file);
+          .upload(filePath, file, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -69,17 +78,18 @@ export function ProfileForm({ user }: ProfileFormProps) {
         avatarUrl = publicUrl;
       }
 
-      const { error: userError } = await supabase.auth.updateUser({
-        data: {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
           full_name: values.fullName,
           avatar_url: avatarUrl,
-        },
-      });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-      if (userError) throw userError;
+      if (error) throw error;
 
       showSuccess("Perfil atualizado com sucesso!");
-      // Forçar a recarga para que o header atualize a imagem
       setTimeout(() => window.location.reload(), 1000);
 
     } catch (error: any) {
@@ -99,7 +109,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
             <FormItem className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={avatarPreview || undefined} />
-                <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{profile?.full_name?.[0] || user.email?.[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="grid w-full max-w-sm items-center gap-1.5">
                 <FormLabel htmlFor="picture">Foto de Perfil</FormLabel>

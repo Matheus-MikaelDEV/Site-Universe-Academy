@@ -18,6 +18,12 @@ import IdealizersPage from "./pages/IdealizersPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
+import { AdminRoute } from "./components/AdminRoute";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminCoursesPage from "./pages/admin/AdminCoursesPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminFeedbackPage from "./pages/admin/AdminFeedbackPage";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +50,16 @@ const App = () => (
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/perfil" element={<ProfilePage />} />
+              </Route>
+
+              {/* Admin Routes */}
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route path="dashboard" element={<AdminDashboardPage />} />
+                  <Route path="courses" element={<AdminCoursesPage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="feedback" element={<AdminFeedbackPage />} />
+                </Route>
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

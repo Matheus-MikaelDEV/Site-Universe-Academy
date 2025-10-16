@@ -1,4 +1,4 @@
-import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut } from "lucide-react";
+import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut, Shield } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export const Header = () => {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin, profile } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -89,15 +89,15 @@ export const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.user_metadata.avatar_url} alt={user.user_metadata.full_name || user.email} />
-                      <AvatarFallback>{getInitials(user.email!)}</AvatarFallback>
+                      <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || user.email} />
+                      <AvatarFallback>{profile?.full_name?.[0] || getInitials(user.email!)}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.user_metadata.full_name}</p>
+                      <p className="text-sm font-medium leading-none">{profile?.full_name || user.email}</p>
                       <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
@@ -110,6 +110,12 @@ export const Header = () => {
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Meu Perfil</span>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
