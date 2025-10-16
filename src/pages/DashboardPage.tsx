@@ -10,7 +10,8 @@ import { UserBadges } from "@/components/UserBadges";
 import { Award, FileText, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { showError } from "@/utils/toast";
-import { CourseCard } from "@/components/course-card"; // Import CourseCard
+import { CourseCard } from "@/components/course-card";
+import { Button } from "@/components/ui/button"; // Importação adicionada
 
 interface Certificate {
   id: string;
