@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   fullName: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
+  cpf: z.string().optional(),
   avatarFile: z.instanceof(File).optional(),
 });
 
@@ -36,6 +37,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
+      cpf: "",
       avatarFile: undefined,
     },
   });
@@ -43,6 +45,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
   useEffect(() => {
     if (profile) {
       form.setValue("fullName", profile.full_name || "");
+      // @ts-ignore
+      form.setValue("cpf", profile.cpf || "");
       setAvatarPreview(profile.avatar_url || null);
     }
   }, [profile, form]);
@@ -82,6 +86,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         .from('profiles')
         .update({
           full_name: values.fullName,
+          cpf: values.cpf,
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         })
@@ -128,6 +133,19 @@ export function ProfileForm({ user }: ProfileFormProps) {
               <FormLabel>Nome Completo</FormLabel>
               <FormControl>
                 <Input placeholder="Seu nome completo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="cpf"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>CPF</FormLabel>
+              <FormControl>
+                <Input placeholder="000.000.000-00" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

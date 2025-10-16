@@ -1,19 +1,39 @@
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, profile } a= useAuth();
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-grow container py-12">
-        <h1 className="text-4xl font-bold mb-4">Painel do Aluno</h1>
-        <p className="text-lg text-muted-foreground">
-          Bem-vindo, {user?.email}!
-        </p>
-        {/* Conteúdo do dashboard virá aqui */}
+      <main className="flex-grow container py-12 space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Painel do Aluno</h1>
+          <p className="text-lg text-muted-foreground">
+            Bem-vindo de volta, {profile?.full_name || user?.email}!
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus Cursos Concluídos</CardTitle>
+            <CardDescription>
+              Aqui você pode ver os cursos que completou e gerar seus certificados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Placeholder: Logic to fetch and display completed courses will go here */}
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Você ainda não concluiu nenhum curso.</p>
+              <Badge variant="outline" className="mt-2">Em breve</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
       </main>
       <Footer />
     </div>
