@@ -29,41 +29,49 @@ const CoursesPage = () => {
       setLoading(true);
       console.log("Iniciando busca de cursos...");
 
-      // Fetch courses
-      let query = supabase.from("courses").select("*");
-      if (selectedCategory !== "all") {
-        query = query.eq("category", selectedCategory);
-      }
-      if (searchTerm) {
-        query = query.ilike("title", `%${searchTerm}%`);
-      }
+      try {
+        // Fetch courses
+        let query = supabase.from("courses").select("*");
+        if (selectedCategory !== "all") {
+          query = query.eq("category", selectedCategory);
+        }
+        if (searchTerm) {
+          query = query.ilike("title", `%${searchTerm}%`);
+        }
 
-      const { data, error } = await query.order("title", { ascending: true });
-      
-      if (error) {
-        console.error("Erro ao buscar cursos do Supabase:", error);
-        showError("Falha ao carregar cursos: " + error.message);
-        setCourses([]); // Ensure courses are empty on error
-      } else {
-        console.log("Dados de cursos recebidos do Supabase:", data);
-        setCourses(data as Course[]);
-      }
+        const { data: coursesData, error: coursesError } = await query.order("title", { ascending: true });
+        
+        console.log("Supabase courses response - data:", coursesData, "error:", coursesError);
 
-      // Fetch unique categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from("courses")
-        .select("category")
-        .not("category", "is", null);
-      
-      if (categoriesError) {
-        console.error("Erro ao buscar categorias do Supabase:", categoriesError);
-      } else {
-        console.log("Dados de categorias recebidos do Supabase:", categoriesData);
-        const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category)));
-        setCategories(uniqueCategories as string[]);
+        if (coursesError) {
+          console.error("Erro ao buscar cursos do Supabase:", coursesError);
+          showError("Falha ao carregar cursos: " + coursesError.message);
+          setCourses([]);
+        } else {
+          setCourses(coursesData as Course[]);
+        }
+
+        // Fetch unique categories
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from("courses")
+          .select("category")
+          .not("category", "is", null);
+        
+        console.log("Supabase categories response - data:", categoriesData, "error:", categoriesError);
+
+        if (categoriesError) {
+          console.error("Erro ao buscar categorias do Supabase:", categoriesError);
+        } else {
+          const uniqueCategories = Array.from(new Set(categoriesData.map((c) => c.category)));
+          setCategories(uniqueCategories as string[]);
+        }
+      } catch (e: any) {
+        console.error("Erro inesperado durante a busca de cursos/categorias:", e);
+        showError("Ocorreu um erro inesperado: " + e.message);
+      } finally {
+        setLoading(false);
+        console.log("Busca de cursos e categorias finalizada. Loading set to false.");
       }
-      setLoading(false);
-      console.log("Busca de cursos e categorias finalizada. Loading set to false.");
     };
 
     fetchCoursesAndCategories();
