@@ -13,7 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
-import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um email válido." }),
@@ -21,7 +20,6 @@ const formSchema = z.object({
 });
 
 export function LoginForm() {
-  const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -40,7 +38,7 @@ export function LoginForm() {
       showError(error.message);
     } else {
       showSuccess("Login realizado com sucesso!");
-      navigate("/dashboard");
+      // The navigation will now be handled automatically by the auth state change.
     }
   }
 

@@ -24,6 +24,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminCoursesPage from "./pages/admin/AdminCoursesPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminFeedbackPage from "./pages/admin/AdminFeedbackPage";
+import { PublicRouteGuard } from "./components/PublicRouteGuard";
 
 const queryClient = new QueryClient();
 
@@ -37,9 +38,15 @@ const App = () => (
             <Sonner />
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
+              
+              {/* Public routes that should redirect if logged in */}
+              <Route element={<PublicRouteGuard />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
+              </Route>
+
+              {/* Other public routes */}
               <Route path="/cursos" element={<CoursesPage />} />
               <Route path="/cursos/:id" element={<CourseDetailPage />} />
               <Route path="/sobre" element={<AboutPage />} />
