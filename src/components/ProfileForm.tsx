@@ -112,7 +112,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           render={() => (
             <FormItem className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={avatarPreview || undefined} />
+                <AvatarImage src={avatarPreview || undefined} loading="lazy" /> {/* Added lazy loading */}
                 <AvatarFallback>{profile?.full_name?.[0] || user.email?.[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="grid w-full max-w-sm items-center gap-1.5">

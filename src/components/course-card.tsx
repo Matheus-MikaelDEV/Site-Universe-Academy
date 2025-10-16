@@ -33,6 +33,7 @@ export const CourseCard = ({
           src={imageUrl}
           alt={title}
           className="w-full h-48 object-cover"
+          loading="lazy" // Added lazy loading
         />
       </CardHeader>
       <CardContent className="p-4 flex-grow">

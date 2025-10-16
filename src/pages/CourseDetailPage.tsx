@@ -100,7 +100,12 @@ const CourseDetailPage = () => {
                 </div>
               </div>
               <div>
-                <img src={course.image_url || '/placeholder.svg'} alt={course.title} className="rounded-lg shadow-lg mb-4 w-full object-cover" />
+                <img 
+                  src={course.image_url || '/placeholder.svg'} 
+                  alt={course.title} 
+                  className="rounded-lg shadow-lg mb-4 w-full object-cover" 
+                  loading="lazy" // Added lazy loading
+                />
                 {isEnrolled ? (
                   <Button size="lg" className="w-full" disabled>
                     <CheckCircle className="mr-2 h-5 w-5" />

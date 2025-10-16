@@ -32,7 +32,7 @@ const IdealizersPage = () => {
               <div className="flex flex-col md:flex-row">
                 <div className="flex-shrink-0 p-6 flex items-center justify-center md:w-1/3 bg-muted/40">
                   <Avatar className="h-32 w-32 border-4 border-primary/20">
-                    <AvatarImage src={person.avatar} alt={person.name} />
+                    <AvatarImage src={person.avatar} alt={person.name} loading="lazy" /> {/* Added lazy loading */}
                     <AvatarFallback className="text-4xl">{person.fallback}</AvatarFallback>
                   </Avatar>
                 </div>
