@@ -30,16 +30,9 @@ const CoursesPage = () => {
       console.log("Iniciando busca de cursos...");
 
       try {
-        // Fetch courses
-        let query = supabase.from("courses").select("*");
-        if (selectedCategory !== "all") {
-          query = query.eq("category", selectedCategory);
-        }
-        if (searchTerm) {
-          query = query.ilike("title", `%${searchTerm}%`);
-        }
-
-        const { data: coursesData, error: coursesError } = await query.order("title", { ascending: true });
+        // SIMPLIFICANDO A BUSCA DE CURSOS PARA TESTE
+        console.log("Tentando buscar cursos com consulta simples...");
+        const { data: coursesData, error: coursesError } = await supabase.from("courses").select("*").order("title", { ascending: true });
         
         console.log("Supabase courses response - data:", coursesData, "error:", coursesError);
 
@@ -51,7 +44,8 @@ const CoursesPage = () => {
           setCourses(coursesData as Course[]);
         }
 
-        // Fetch unique categories
+        // BUSCA DE CATEGORIAS
+        console.log("Tentando buscar categorias...");
         const { data: categoriesData, error: categoriesError } = await supabase
           .from("courses")
           .select("category")
@@ -75,7 +69,7 @@ const CoursesPage = () => {
     };
 
     fetchCoursesAndCategories();
-  }, [searchTerm, selectedCategory]);
+  }, []); // Removendo dependências para simplificar o teste inicial
 
   return (
     <div className="flex flex-col min-h-screen">
