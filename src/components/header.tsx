@@ -1,4 +1,4 @@
-import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut, Shield, Award } from "lucide-react";
+import { Menu, BookOpen, LayoutDashboard, User as UserIcon, LogOut, Shield, Award, BellRing } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
