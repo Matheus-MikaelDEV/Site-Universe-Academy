@@ -18,6 +18,13 @@ const idealizers = [
     fallback: "WV",
     bio: "Licenciado em Química e professor da Rede Estadual de Educação de Goiás e discente do Programa de Pós-Graduação Stricto Sensu – Mestrado Profissional em Ensino de Ciências da Universidade Estadual de Goiás (UEG). Este espaço foi criado com o propósito de contribuir para a formação continuada de professores de Ciências da Natureza e Ciências da Natureza e suas Tecnologias, oferecendo conteúdos, reflexões e práticas pedagógicas que dialogam com os desafios do ensino contemporâneo. O site tem caráter de Produto Educacional, constituindo-se como um ambiente de apoio e atualização, voltado para ampliar horizontes, compartilhar experiências e fortalecer a atuação docente. Aqui, você encontrará materiais e recursos pensados para potencializar o trabalho em sala de aula, promovendo aprendizagens significativas e estimulando o protagonismo do professor como agente transformador da educação.",
   },
+  {
+    name: "Matheus Mikael Justino de Azevedo",
+    role: "Estudante de Ensino Médio e Técnico em Informática",
+    avatar: "/mikael.png",
+    fallback: "MA",
+    bio: "Matheus Mikael Justino de Azevedo, nasci em 2008, sou um jovem fascinado por tecnologia e estou cursando a segunda série do Ensino Médio concomitante ao Técnico em Informática. Meu foco principal é o desenvolvimento Back-End, e domino Java e suas tecnologias. Também possuo familiaridade com HTML, CSS, JavaScript, Python, C e outras linguagens. Com uma paixão imensa por causar impacto positivo no mundo, estou me dedicando aos estudos na área de tecnologia, reconhecendo meus potenciais que poderão ser transformadores. Tenho sede por aprendizado, o me levou a ser escolhido para a 5ª Semana Nacional da Educação Profissional e Tecnológica, em Braslia, evento que explora o impacto da educação profissionalizante. Também fui selecionado para participar da criação da UniVerse Academy, uma plataforma de cursos gratuitos com foco na educação brasileira, especialmente em Ciências da Natureza e Ciências da Natureza e suas Tecnologias. Essa oportunidade me motivou a buscar ainda mais conhecimento para criar as próprias soluções, mostrando meu desejo de fazer a diferença, exercendo meu protagonismo.",
+  },
 ];
 
 const IdealizersPage = () => {
