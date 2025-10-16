@@ -11,7 +11,7 @@ import * as z from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 
 const feedbackSchema = z.object({
   name: z.string().min(1, "O nome é obrigatório."),
