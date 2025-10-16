@@ -25,12 +25,15 @@ export const Header = () => {
     { href: "/sobre", label: "Sobre" },
     { href: "/idealizadores", label: "Idealizadores" },
     { href: "/feedback", label: "Feedback" },
-    { href: "/leaderboard", label: "Leaderboard" }, // New link
+    { href: "/leaderboard", label: "Leaderboard" },
   ];
 
   const getInitials = (email: string) => {
     return email?.[0]?.toUpperCase() || "U";
   }
+
+  // Determine the correct dashboard path based on admin status
+  const dashboardPath = isAdmin ? "/admin/dashboard" : "/dashboard";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -81,7 +84,7 @@ export const Header = () => {
                   ))}
                   {session && user && (
                     <>
-                      <Link to="/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
+                      <Link to={dashboardPath} className="transition-colors hover:text-foreground/80 text-foreground/60">
                         Painel
                       </Link>
                       <Link to="/perfil" className="transition-colors hover:text-foreground/80 text-foreground/60">
@@ -90,11 +93,7 @@ export const Header = () => {
                       <Link to="/notificacoes" className="transition-colors hover:text-foreground/80 text-foreground/60">
                         Notificações
                       </Link>
-                      {isAdmin && (
-                        <Link to="/admin/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
-                          Admin
-                        </Link>
-                      )}
+                      {/* Removed redundant Admin link, as 'Painel' now handles it for admins */}
                       <Button variant="ghost" onClick={handleLogout} className="justify-start px-0">
                         Sair
                       </Button>
@@ -137,7 +136,7 @@ export const Header = () => {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <DropdownMenuItem onClick={() => navigate(dashboardPath)}>
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       <span>Painel</span>
                     </DropdownMenuItem>
@@ -149,12 +148,7 @@ export const Header = () => {
                       <BellRing className="mr-2 h-4 w-4" />
                       <span>Notificações</span>
                     </DropdownMenuItem>
-                    {isAdmin && (
-                      <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin</span>
-                      </DropdownMenuItem>
-                    )}
+                    {/* Removed redundant Admin link, as 'Painel' now handles it for admins */}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
