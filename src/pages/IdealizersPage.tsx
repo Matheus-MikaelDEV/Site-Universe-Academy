@@ -25,6 +25,13 @@ const idealizers = [
     fallback: "MA",
     bio: "Matheus Mikael Justino de Azevedo, nasci em 2008, sou um jovem fascinado por tecnologia e estou cursando a segunda série do Ensino Médio concomitante ao Técnico em Informática. Meu foco principal é o desenvolvimento Back-End, e domino Java e suas tecnologias. Também possuo familiaridade com HTML, CSS, JavaScript, Python, C e outras linguagens.\n\nCom uma paixão imensa por causar impacto positivo no mundo, estou me dedicando aos estudos na área de tecnologia, reconhecendo meus potenciais que poderão ser transformadores. Tenho sede por aprendizado, o me levou a ser escolhido para a 5ª Semana Nacional da Educação Profissional e Tecnológica, em Braslia, evento que explora o impacto da educação profissionalizante.\n\nTambém fui selecionado para participar da criação da UniVerse Academy, uma plataforma de cursos gratuitos com foco na educação brasileira, especialmente em Ciências da Natureza e Ciências da Natureza e suas Tecnologias. Essa oportunidade me motivou a buscar ainda mais conhecimento para criar as próprias soluções, mostrando meu desejo de fazer a diferença, exercendo meu protagonismo.",
   },
+  {
+    name: "Ester G. Tomaz",
+    role: "Estudante de Ensino Médio e Técnico em Informática",
+    avatar: "/ester.png",
+    fallback: "ET",
+    bio: "Nasci em 03 de março de 2009 e atualmente curso o 2º ano do Ensino Médio integrado ao Técnico em Informática. Desde cedo, desenvolvi uma forte paixão pela escrita, pelo desenho e pelas artes em geral, áreas nas quais encontro a melhor forma de expressar minha criatividade e identidade.\n\nNo projeto em desenvolvimento, sou responsável pela parte visual, atuando diretamente na elaboração da capa e na criação das ilustrações que representam o trabalho. Minha intenção é unir estética, originalidade e clareza para que cada elemento visual complemente a proposta do grupo, tornando-a mais envolvente e atrativa. Tenho familiaridade com desenhos digitais, pintura e diferentes formas de arte, além de facilidade em escrita e comunicação. Dialogar, ouvir e compreender diferentes perspectivas são características que me permitem colaborar de forma ativa e construtiva. Possuo também facilidade em resolver problemas e assumir papéis de liderança, exercendo de maneira natural a organização e o comando das atividades em grupo.",
+  },
 ];
 
 const IdealizersPage = () => {
