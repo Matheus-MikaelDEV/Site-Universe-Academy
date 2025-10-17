@@ -56,14 +56,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
+    // Initial check for session to set state and loading correctly
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      fetchProfile(currentUser).finally(() => setLoading(false)); // Ensure loading is false after initial fetch
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log("Auth state changed:", event, session); // Added logging for debugging
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        await fetchProfile(currentUser);
-        setLoading(false);
+        
+        // Only refetch profile if user is signed in, token refreshed, or initial session
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          await fetchProfile(currentUser);
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null); // Clear profile on sign out
+        }
+        setLoading(false); // Ensure loading is false after any auth state change
       }
     );
 
