@@ -8,6 +8,8 @@ export interface Profile {
   avatar_url: string | null;
   role: string | null;
   cpf: string | null;
+  points?: number;
+  email?: string | null;
 }
 
 interface AuthContextType {
@@ -33,43 +35,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const setData = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error);
-        setLoading(false);
-        return;
-      }
-
-      setSession(session);
-      const currentUser = session?.user;
-      setUser(currentUser ?? null);
-
-      if (currentUser) {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentUser.id)
-          .single();
-        
-        if (profileError) {
-          console.error("Error fetching profile:", profileError.message);
-        } else {
-          setProfile(profileData);
-        }
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    };
-
-    setData();
+    setLoading(true);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
-        const currentUser = session?.user;
-        setUser(currentUser ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
         if (currentUser) {
           const { data: profileData, error: profileError } = await supabase
