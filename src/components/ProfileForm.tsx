@@ -16,7 +16,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import React, { useEffect, useState } from "react";
-import { Profile } from "@/contexts/AuthContext";
+import { Profile, useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
@@ -32,6 +32,7 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user, profile }: ProfileFormProps) {
   const queryClient = useQueryClient();
+  const { refetchProfile } = useAuth();
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url || null);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -92,12 +93,10 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       if (error) throw error;
       return avatarUrl;
     },
-    onSuccess: (newAvatarUrl) => {
+    onSuccess: async () => {
       showSuccess("Perfil atualizado com sucesso!");
+      await refetchProfile(); // Refetch profile in AuthContext for header update
       queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
-      // Manually update avatar in AuthContext if needed, or rely on full page reload
-      // For now, a simple reload to ensure header avatar updates
-      setTimeout(() => window.location.reload(), 1000);
     },
     onError: (error: any) => {
       showError(error.message || "Ocorreu um erro ao atualizar o perfil.");

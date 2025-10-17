@@ -13,10 +13,13 @@ import { showError, showSuccess } from "@/utils/toast";
 import { useAdminCourses } from "@/hooks/use-admin-courses";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 export default function AdminCoursesPage() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -30,29 +33,38 @@ export default function AdminCoursesPage() {
     onSuccess: () => {
       showSuccess("Curso deletado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["adminCourses"] });
+      setCourseToDelete(null);
     },
     onError: (err: any) => {
       showError(err.message);
+      setCourseToDelete(null);
     },
   });
 
   const handleEdit = (course: Course) => {
     setSelectedCourse(course);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
   const handleCreate = () => {
     setSelectedCourse(null);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
-  const handleDelete = (courseId: string) => {
-    if (!window.confirm("Tem certeza que deseja deletar este curso? Esta ação não pode ser desfeita.")) return;
-    deleteCourseMutation.mutate(courseId);
+  const handleDeleteRequest = (courseId: string) => {
+    setCourseToDelete(courseId);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (courseToDelete) {
+      deleteCourseMutation.mutate(courseToDelete);
+    }
+    setIsConfirmDialogOpen(false);
   };
 
   const handleFormSuccess = () => {
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     queryClient.invalidateQueries({ queryKey: ["adminCourses"] });
   };
 
@@ -110,7 +122,7 @@ export default function AdminCoursesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => navigate(`/admin/courses/${course.id}/manage`)}>Gerenciar Conteúdo</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(course)}>Editar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(course.id)} className="text-destructive" disabled={deleteCourseMutation.isPending}>Deletar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteRequest(course.id)} className="text-destructive" disabled={deleteCourseMutation.isPending}>Deletar</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -124,7 +136,7 @@ export default function AdminCoursesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedCourse ? "Editar Curso" : "Criar Novo Curso"}</DialogTitle>
@@ -132,10 +144,18 @@ export default function AdminCoursesPage() {
           <CourseForm
             course={selectedCourse}
             onSuccess={handleFormSuccess}
-            onCancel={() => setIsDialogOpen(false)}
+            onCancel={() => setIsFormDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmationDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+        onConfirm={confirmDelete}
+        title="Tem certeza?"
+        description="Esta ação não pode ser desfeita. Isso deletará permanentemente o curso e todo o seu conteúdo associado."
+      />
     </>
   );
 }

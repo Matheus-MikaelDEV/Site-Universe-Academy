@@ -59,10 +59,6 @@ export const ModuleQuiz = ({ moduleId, onQuizComplete }: ModuleQuizProps) => {
     const currentQuestion = questions[currentQuestionIndex];
     const isCorrect = selectedOption === currentQuestion.correct_option_index;
 
-    if (isCorrect) {
-      setScore((prev) => prev + 1);
-    }
-
     // Save user answer
     const { error } = await supabase.from("user_answers").insert({
       user_id: user.id,
@@ -76,11 +72,16 @@ export const ModuleQuiz = ({ moduleId, onQuizComplete }: ModuleQuizProps) => {
     }
 
     if (currentQuestionIndex < questions.length - 1) {
+      if (isCorrect) {
+        setScore((prev) => prev + 1);
+      }
       setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedOption(null);
     } else {
+      const finalScore = score + (isCorrect ? 1 : 0);
+      setScore(finalScore);
       setQuizCompleted(true);
-      onQuizComplete(score + (isCorrect ? 1 : 0), questions.length); // Pass final score
+      onQuizComplete(finalScore, questions.length);
     }
   };
 

@@ -18,6 +18,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { useAdminUsers } from "@/hooks/use-admin-users";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 const profileEditSchema = z.object({
   full_name: z.string().min(3, "Nome completo é obrigatório."),
@@ -27,42 +28,37 @@ const profileEditSchema = z.object({
 
 export default function AdminUsersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [userForPasswordReset, setUserForPasswordReset] = useState<Profile | null>(null);
   const queryClient = useQueryClient();
 
   const { data: users, isLoading, error } = useAdminUsers();
 
   const form = useForm<z.infer<typeof profileEditSchema>>({
     resolver: zodResolver(profileEditSchema),
-    defaultValues: {
-      full_name: "",
-      cpf: "",
-      role: "user",
-    },
+    defaultValues: { full_name: "", cpf: "", role: "user" },
   });
 
   const updateProfileMutation = useMutation({
     mutationFn: async (values: z.infer<typeof profileEditSchema>) => {
-      if (!selectedUser) throw new Error("Nenhum usuário selecionado para atualização.");
+      if (!selectedUser) throw new Error("Nenhum usuário selecionado.");
       const { error } = await supabase
         .from("profiles")
         .update({
           full_name: values.full_name,
           cpf: values.cpf,
           role: values.role,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", selectedUser.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      showSuccess("Perfil do usuário atualizado com sucesso!");
+      showSuccess("Perfil do usuário atualizado!");
       setIsEditDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
     },
-    onError: (err: any) => {
-      showError("Erro ao atualizar perfil: " + err.message);
-    },
+    onError: (err: any) => showError("Erro ao atualizar: " + err.message),
   });
 
   const handleEdit = (user: Profile) => {
@@ -75,18 +71,23 @@ export default function AdminUsersPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleResetPassword = async (userId: string, userEmail: string) => {
-    if (!window.confirm(`Tem certeza que deseja enviar um email de redefinição de senha para ${userEmail}?`)) return;
+  const handleResetPasswordRequest = (user: Profile) => {
+    setUserForPasswordReset(user);
+    setIsConfirmDialogOpen(true);
+  };
 
-    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+  const confirmResetPassword = async () => {
+    if (!userForPasswordReset?.email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(userForPasswordReset.email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-
     if (error) {
-      showError("Erro ao enviar email de redefinição: " + error.message);
+      showError("Erro ao enviar email: " + error.message);
     } else {
-      showSuccess(`Um email de redefinição de senha foi enviado para ${userEmail}.`);
+      showSuccess(`Email de redefinição enviado para ${userForPasswordReset.email}.`);
     }
+    setIsConfirmDialogOpen(false);
+    setUserForPasswordReset(null);
   };
 
   if (error) {
@@ -138,7 +139,6 @@ export default function AdminUsersPage() {
                         <DropdownMenuTrigger asChild>
                           <Button aria-haspopup="true" size="icon" variant="ghost">
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
                             <Pencil className="mr-2 h-4 w-4" /> Editar Perfil
                           </DropdownMenuItem>
                           {user.email && (
-                            <DropdownMenuItem onClick={() => handleResetPassword(user.id, user.email!)}>
+                            <DropdownMenuItem onClick={() => handleResetPasswordRequest(user)}>
                               <RotateCcw className="mr-2 h-4 w-4" /> Redefinir Senha
                             </DropdownMenuItem>
                           )}
@@ -165,66 +165,29 @@ export default function AdminUsersPage() {
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Perfil do Usuário</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Editar Perfil do Usuário</DialogTitle></DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit((values) => updateProfileMutation.mutate(values))} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cpf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPF</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Função (Role)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a função" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="user">Usuário</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="cpf" render={({ field }) => (<FormItem><FormLabel>CPF</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="role" render={({ field }) => (<FormItem><FormLabel>Função (Role)</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione a função" /></SelectTrigger></FormControl><SelectContent><SelectItem value="user">Usuário</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={updateProfileMutation.isPending}>Salvar Alterações</Button>
+                <Button type="submit" disabled={updateProfileMutation.isPending}>Salvar</Button>
               </div>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmationDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+        onConfirm={confirmResetPassword}
+        title="Redefinir Senha?"
+        description={`Tem certeza que deseja enviar um email de redefinição de senha para ${userForPasswordReset?.email}?`}
+        confirmText="Sim, Enviar Email"
+      />
     </>
   );
 }

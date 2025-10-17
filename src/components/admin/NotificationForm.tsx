@@ -21,7 +21,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   message: z.string().min(10, "A mensagem deve ter pelo menos 10 caracteres."),
-  userId: z.string().optional(), // Optional, if sending to all users
+  userId: z.string().optional(),
   type: z.enum(["info", "success", "warning", "alert"]).default("info"),
 });
 
@@ -37,7 +37,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       message: "",
-      userId: "all-users", // Default to "all-users" instead of empty string
+      userId: "all-users",
       type: "info",
     },
   });
@@ -59,18 +59,34 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
 
   const sendNotificationMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
-      const notificationData = {
-        message: values.message,
-        user_id: values.userId === "all-users" ? null : values.userId, // Check for "all-users"
-        type: values.type,
-      };
+      if (values.userId === "all-users") {
+        // Fetch all user IDs to send notifications
+        const { data: allUsers, error: usersError } = await supabase
+          .from("profiles")
+          .select("id");
+        if (usersError) throw usersError;
 
-      const { error } = await supabase.from("notifications").insert([notificationData]);
-      if (error) throw error;
+        const notifications = allUsers.map(user => ({
+          message: values.message,
+          user_id: user.id,
+          type: values.type,
+        }));
+
+        const { error } = await supabase.from("notifications").insert(notifications);
+        if (error) throw error;
+      } else {
+        // Send to a single user
+        const { error } = await supabase.from("notifications").insert([{
+          message: values.message,
+          user_id: values.userId,
+          type: values.type,
+        }]);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       showSuccess("Notificação enviada com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["userNotifications"] }); // Invalidate all user notifications
+      queryClient.invalidateQueries({ queryKey: ["userNotifications"] });
       onSuccess();
     },
     onError: (err: any) => {
@@ -99,7 +115,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
           name="userId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Enviar para (Opcional)</FormLabel>
+              <FormLabel>Enviar para</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -107,7 +123,7 @@ export function NotificationForm({ onSuccess, onCancel }: NotificationFormProps)
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="all-users">Todos os Usuários</SelectItem> {/* Changed value from "" to "all-users" */}
+                  <SelectItem value="all-users">Todos os Usuários</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name || user.id}
